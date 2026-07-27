@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/gto_dark_bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="24dp">
+
+        <!-- Logo 区域 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginTop="40dp"
+            android:layout_marginBottom="8dp">
+
+            <ImageView
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:src="@mipmap/ic_launcher"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="桃园助手"
+                android:textSize="36sp"
+                android:textStyle="bold"
+                android:textColor="@color/gto_text_primary"
+                android:letterSpacing="0.15" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/app_subtitle"
+                android:textSize="14sp"
+                android:textColor="@color/gto_text_secondary"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- 免责声明卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="@drawable/bg_disclaimer_card"
+            android:padding="12dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="12dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:gravity="center"
+                android:text="⚠"
+                android:textSize="16sp"
+                android:layout_marginEnd="10dp" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/disclaimer_title"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/gto_warning" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/disclaimer_text"
+                    android:textSize="11sp"
+                    android:textColor="@color/gto_text_secondary"
+                    android:layout_marginTop="4dp"
+                    android:lineSpacingExtra="2dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 登录表单卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="24dp"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/secure_access"
+                android:textSize="11sp"
+                android:textColor="@color/gto_accent"
+                android:letterSpacing="0.2"
+                android:layout_marginBottom="8dp"
+                android:layout_gravity="center" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/login_title"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="@color/gto_text_primary"
+                android:layout_gravity="center" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/login_subtitle"
+                android:textSize="13sp"
+                android:textColor="@color/gto_text_secondary"
+                android:layout_gravity="center"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="24dp" />
+
+            <!-- 邮箱输入 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_input"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="20dp"
+                    android:layout_height="wrap_content"
+                    android:text="✉"
+                    android:textSize="16sp"
+                    android:layout_marginEnd="10dp" />
+
+                <EditText
+                    android:id="@+id/et_email"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:hint="@string/email_hint"
+                    android:textColor="@color/gto_text_primary"
+                    android:textColorHint="@color/gto_text_secondary"
+                    android:inputType="textEmailAddress"
+                    android:background="@null"
+                    android:textSize="15sp"
+                    android:paddingVertical="4dp" />
+            </LinearLayout>
+
+            <!-- 密码输入 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_input"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:layout_marginBottom="24dp">
+
+                <TextView
+                    android:layout_width="20dp"
+                    android:layout_height="wrap_content"
+                    android:text="🔒"
+                    android:textSize="16sp"
+                    android:layout_marginEnd="10dp" />
+
+                <EditText
+                    android:id="@+id/et_password"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:hint="@string/password_hint"
+                    android:textColor="@color/gto_text_primary"
+                    android:textColorHint="@color/gto_text_secondary"
+                    android:inputType="textPassword"
+                    android:background="@null"
+                    android:textSize="15sp"
+                    android:paddingVertical="4dp" />
+            </LinearLayout>
+
+            <!-- 进入控制台按钮 -->
+            <Button
+                android:id="@+id/btn_login"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="@string/btn_login"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_btn_accent"
+                android:layout_marginBottom="12dp"
+                android:elevation="4dp"
+                android:stateListAnimator="@null" />
+
+            <!-- 注册账户按钮 -->
+            <Button
+                android:id="@+id/btn_register"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="@string/btn_register"
+                android:textColor="@color/gto_accent"
+                android:textSize="16sp"
+                android:background="@drawable/bg_btn_outline"
+                android:layout_marginBottom="16dp"
+                android:stateListAnimator="@null" />
+        </LinearLayout>
+
+        <!-- 版权信息 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/footer_copyright"
+            android:textSize="11sp"
+            android:textColor="@color/gto_text_secondary"
+            android:layout_marginTop="24dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_version"
+            android:textSize="11sp"
+            android:textColor="@color/gto_text_secondary"
+            android:layout_marginBottom="16dp" />
+    </LinearLayout>
+</ScrollView>

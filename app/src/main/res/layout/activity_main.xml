@@ -1,0 +1,533 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/gto_dark_bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- ============ 顶部栏 ============ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/console_subtitle"
+                    android:textSize="11sp"
+                    android:textColor="@color/gto_accent"
+                    android:letterSpacing="0.2" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/console_title"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/gto_text_primary" />
+            </LinearLayout>
+
+            <!-- 设置按钮（占位） -->
+            <TextView
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:gravity="center"
+                android:text="⚙"
+                android:textSize="20sp" />
+        </LinearLayout>
+
+        <!-- 副标题 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="管理您的授权与额度，进入专业决策平台"
+            android:textSize="12sp"
+            android:textColor="@color/gto_text_secondary"
+            android:layout_marginBottom="20dp" />
+
+        <!-- ============ 剩余授权额度卡片 ============ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="12dp"
+            android:layout_marginBottom="10dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/quota_label"
+                    android:textSize="13sp"
+                    android:textColor="@color/gto_text_secondary" />
+
+                <ImageButton
+                    android:id="@+id/btn_refresh_quota"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@drawable/ic_refresh"
+                    android:background="@drawable/bg_refresh_circle"
+                    android:padding="6dp"
+                    android:scaleType="centerInside"
+                    android:layout_gravity="center" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_quota"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textSize="32sp"
+                android:textStyle="bold"
+                android:textColor="@color/gto_accent"
+                android:layout_gravity="center" />
+
+            <!-- 过期时间 -->
+            <TextView
+                android:id="@+id/tv_expire_at"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="11sp"
+                android:textColor="@color/gto_warning"
+                android:layout_gravity="center"
+                android:layout_marginTop="4dp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- ============ 账户信息卡片 ============ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <!-- 登录账号行 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="10dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/account_label"
+                    android:textSize="14sp"
+                    android:textColor="@color/gto_text_secondary" />
+
+                <TextView
+                    android:id="@+id/tv_account_phone"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="---"
+                    android:textSize="14sp"
+                    android:textColor="@color/gto_text_primary" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/gto_divider" />
+
+            <!-- 设备状态行 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="10dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/device_status_label"
+                    android:textSize="14sp"
+                    android:textColor="@color/gto_text_secondary" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_device_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/device_not_bound"
+                        android:textSize="14sp"
+                        android:textColor="@color/gto_text_primary"
+                        android:layout_marginEnd="6dp" />
+
+                    <TextView
+                        android:id="@+id/tv_device_check"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:gravity="center"
+                        android:text="✓"
+                        android:textSize="12sp"
+                        android:textColor="@color/gto_success"
+                        android:visibility="gone" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- 重新激活按钮（仅在已激活时显示） -->
+            <Button
+                android:id="@+id/btn_reactivate"
+                android:layout_width="match_parent"
+                android:layout_height="38dp"
+                android:text="@string/btn_reactivate"
+                android:textColor="@color/gto_accent"
+                android:textSize="13sp"
+                android:background="@drawable/bg_btn_outline"
+                android:layout_marginTop="8dp"
+                android:minWidth="0dp"
+                android:visibility="gone"
+                android:stateListAnimator="@null" />
+        </LinearLayout>
+
+        <!-- ============ 授权码激活卡片 ============ -->
+        <LinearLayout
+            android:id="@+id/layout_license_activation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/license_title"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/gto_text_primary"
+                android:layout_marginBottom="6dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/license_desc"
+                android:textSize="12sp"
+                android:textColor="@color/gto_text_secondary"
+                android:layout_marginBottom="16dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_input"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:layout_marginBottom="14dp">
+
+                <TextView
+                    android:layout_width="20dp"
+                    android:layout_height="wrap_content"
+                    android:text="🔑"
+                    android:textSize="16sp"
+                    android:layout_marginEnd="10dp" />
+
+                <EditText
+                    android:id="@+id/et_license_code"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:hint="@string/license_hint"
+                    android:textColor="@color/gto_text_primary"
+                    android:textColorHint="@color/gto_text_secondary"
+                    android:inputType="text"
+                    android:background="@null"
+                    android:textSize="15sp"
+                    android:paddingVertical="4dp" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btn_activate_license"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:text="@string/btn_activate"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_btn_accent"
+                android:elevation="3dp"
+                android:stateListAnimator="@null" />
+        </LinearLayout>
+
+        <!-- ============ 录屏状态（录制中时显示） ============ -->
+        <LinearLayout
+            android:id="@+id/layout_recording_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="16dp"
+            android:layout_marginBottom="12dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/bg_recording_dot"
+                        android:layout_marginEnd="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="录屏运行中"
+                        android:textSize="14sp"
+                        android:textColor="@color/gto_error" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_stop_recording"
+                    android:layout_width="80dp"
+                    android:layout_height="38dp"
+                    android:text="停止录制"
+                    android:textColor="@color/gto_accent"
+                    android:textSize="12sp"
+                    android:background="@drawable/bg_btn_outline"
+                    android:elevation="0dp"
+                    android:stateListAnimator="@null" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ============ 平台入口卡片 ============ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="20dp"
+            android:layout_marginBottom="20dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/platform_entry"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/gto_text_primary"
+                android:layout_marginBottom="14dp" />
+
+            <!-- AAPoker 入口行 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_item_card"
+                android:padding="12dp"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <!-- AAPoker 应用图标 -->
+                <ImageView
+                    android:id="@+id/iv_aapoker_icon"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:scaleType="fitCenter"
+                    android:layout_marginEnd="12dp"
+                    android:src="@mipmap/ic_launcher" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/aapoker_name"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/gto_text_primary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/aapoker_desc"
+                        android:textSize="11sp"
+                        android:textColor="@color/gto_text_secondary"
+                        android:layout_marginTop="1dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/current_strategy"
+                        android:textSize="10sp"
+                        android:textColor="@color/gto_accent"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_enter_aapoker"
+                    android:layout_width="80dp"
+                    android:layout_height="40dp"
+                    android:text="@string/btn_enter"
+                    android:textColor="@color/gto_accent"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/bg_btn_outline"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    android:elevation="0dp"
+                    android:stateListAnimator="@null" />
+            </LinearLayout>
+
+            <!-- 仅录屏入口行 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_item_card"
+                android:padding="12dp"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/recording_only_name"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/gto_text_primary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/recording_only_desc"
+                        android:textSize="11sp"
+                        android:textColor="@color/gto_text_secondary"
+                        android:layout_marginTop="1dp" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_start_recording"
+                    android:layout_width="80dp"
+                    android:layout_height="40dp"
+                    android:text="@string/btn_start_recording"
+                    android:textColor="@color/gto_accent"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/bg_btn_outline"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    android:elevation="0dp"
+                    android:stateListAnimator="@null" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ============ 底部操作按钮 ============ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginBottom="8dp">
+
+            <Button
+                android:id="@+id/btn_website"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:text="@string/btn_website"
+                android:textColor="@color/gto_accent"
+                android:textSize="15sp"
+                android:background="@drawable/bg_btn_outline"
+                android:layout_marginBottom="10dp"
+                android:elevation="0dp"
+                android:stateListAnimator="@null" />
+
+            <Button
+                android:id="@+id/btn_about"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:text="@string/btn_about"
+                android:textColor="@color/gto_accent"
+                android:textSize="15sp"
+                android:background="@drawable/bg_btn_outline"
+                android:layout_marginBottom="10dp"
+                android:elevation="0dp"
+                android:stateListAnimator="@null" />
+
+            <Button
+                android:id="@+id/btn_logout"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:text="@string/btn_logout"
+                android:textColor="@color/gto_error"
+                android:textSize="15sp"
+                android:background="@drawable/bg_btn_outline"
+                android:elevation="0dp"
+                android:stateListAnimator="@null" />
+        </LinearLayout>
+
+        <!-- 版权 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/footer_copyright"
+            android:textSize="11sp"
+            android:textColor="@color/gto_text_secondary"
+            android:layout_gravity="center" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_version"
+            android:textSize="11sp"
+            android:textColor="@color/gto_text_secondary"
+            android:layout_gravity="center"
+            android:layout_marginBottom="16dp" />
+    </LinearLayout>
+</ScrollView>

@@ -191,8 +191,8 @@ public class LoginActivity extends AppCompatActivity {
 
     private void showError(String message) {
         new AlertDialog.Builder(this)
-                .setTitle("提示")
-                .setMessage(message)
+                .setTitle(DialogTextUtils.redBold("提示"))
+                .setMessage(DialogTextUtils.redBold(message))
                 .setPositiveButton("确定", null)
                 .show();
     }

@@ -1,140 +1,120 @@
 package com.example.screencaptureapp;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.TextView;
-import androidx.annotation.Nullable;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import androidx.core.app.NotificationCompat;
-import android.content.BroadcastReceiver;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 public class FloatingWindowService extends Service {
-
-    public static final String ACTION_UPDATE_TEXT = "UPDATE_TEXT";
-    public static final String EXTRA_TEXT = "text";
     public static final String ACTION_HIDE_WINDOW = "HIDE_WINDOW";
     public static final String ACTION_SHOW_WINDOW = "SHOW_WINDOW";
-
-    private static final String TAG = "FloatingWindowService";
+    public static final String ACTION_UPDATE_TEXT = "UPDATE_TEXT";
     private static final String CHANNEL_ID = "floating_window_channel";
+    private static final long CLEAR_TEXT_DELAY_MS = 5000;
+    public static final String EXTRA_TEXT = "text";
+    private static final int MAX_DISPLAY_CHARS = 120;
     private static final int NOTIFICATION_ID = 1002;
-
-    private WindowManager windowManager;
-    private View floatingView;
+    private static final String RESULT_PREFIX = "__RESULT__:";
+    private static final String TAG = "FloatingWindowService";
     private TextView feedbackText;
+    private View floatingView;
     private Handler handler;
-    private final Runnable hideRunnable = new Runnable() {
+    private WindowManager windowManager;
+    private final Runnable clearTextRunnable = new Runnable() {
         @Override
         public void run() {
-            if (floatingView != null) {
-                floatingView.setVisibility(View.INVISIBLE);
+            if (FloatingWindowService.this.feedbackText != null) {
+                FloatingWindowService.this.feedbackText.setText("");
+                ScreenCaptureService.blog("FLOAT: text cleared");
             }
         }
     };
-
-    // 接收悬浮窗更新的广播
     private final BroadcastReceiver updateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (ACTION_UPDATE_TEXT.equals(intent.getAction())) {
-                String text = intent.getStringExtra(EXTRA_TEXT);
-                if (text != null) {
-                    updateFeedbackText(text);
+            if (FloatingWindowService.ACTION_UPDATE_TEXT.equals(intent.getAction())) {
+                String stringExtra = intent.getStringExtra(FloatingWindowService.EXTRA_TEXT);
+                if (stringExtra != null) {
+                    FloatingWindowService.this.updateFeedbackText(stringExtra);
+                    return;
                 }
+                return;
             }
-            else if(ACTION_HIDE_WINDOW.equals(intent.getAction())) {
-                if (floatingView != null ) {
-                    floatingView.setVisibility(View.INVISIBLE);
+            if (FloatingWindowService.ACTION_HIDE_WINDOW.equals(intent.getAction())) {
+                if (FloatingWindowService.this.floatingView != null) {
+                    FloatingWindowService.this.floatingView.setVisibility(4);
                 }
-            }
-            else if(ACTION_SHOW_WINDOW.equals(intent.getAction())) {
-                if (floatingView != null) {
-                    floatingView.setVisibility(View.VISIBLE);
+            } else {
+                if (!FloatingWindowService.ACTION_SHOW_WINDOW.equals(intent.getAction()) || FloatingWindowService.this.floatingView == null) {
+                    return;
                 }
+                FloatingWindowService.this.floatingView.setVisibility(0);
             }
         }
     };
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "Service onCreate");
-
-        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        handler = new Handler(getMainLooper());
+        this.windowManager = (WindowManager) getSystemService("window");
+        this.handler = new Handler(getMainLooper());
         createNotificationChannel();
-
-        // 注册广播接收器
-        //IntentFilter filter = new IntentFilter(ACTION_UPDATE_TEXT);
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(ACTION_UPDATE_TEXT);
-        filter.addAction(ACTION_HIDE_WINDOW);
-        filter.addAction(ACTION_SHOW_WINDOW);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(ACTION_UPDATE_TEXT);
+        intentFilter.addAction(ACTION_HIDE_WINDOW);
+        intentFilter.addAction(ACTION_SHOW_WINDOW);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(this.updateReceiver, intentFilter, 4);
         } else {
-            registerReceiver(updateReceiver, filter);
+            registerReceiver(this.updateReceiver, intentFilter);
         }
     }
 
     @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
+    public int onStartCommand(Intent intent, int i, int i2) {
         Log.d(TAG, "Service onStartCommand");
-
-        // 关键：立即启动前台服务
-        Notification notification = createNotification();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForeground(NOTIFICATION_ID, notification);
-        } else {
-            startForeground(NOTIFICATION_ID, notification);
+        startForeground(1002, createNotification());
+        if (this.floatingView != null) {
+            return 1;
         }
-
-        if (floatingView == null) {
-            createFloatingWindow();
-        }
-
-        return START_STICKY;
+        createFloatingWindow();
+        return 1;
     }
 
     private void createFloatingWindow() {
-        LayoutInflater inflater = LayoutInflater.from(this);
-        floatingView = inflater.inflate(R.layout.floating_window, null);
-
-        feedbackText = floatingView.findViewById(R.id.tv_feedback);
-
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ?
-                        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY :
-                        WindowManager.LayoutParams.TYPE_PHONE,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-                PixelFormat.TRANSLUCENT
-        );
-
-        //params.gravity = Gravity.TOP | Gravity.END;
-        params.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        params.x = 20;
-        params.y = 100;
-        params.windowAnimations = 0;
-
+        View viewInflate = LayoutInflater.from(this).inflate(R.layout.floating_window, (ViewGroup) null);
+        this.floatingView = viewInflate;
+        this.feedbackText = (TextView) viewInflate.findViewById(R.id.tv_feedback);
+        WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams(-2, -2, 2038, 296, -3);
+        layoutParams.gravity = 49;
+        layoutParams.x = 20;
+        layoutParams.y = 100;
+        layoutParams.windowAnimations = 0;
         try {
-            windowManager.addView(floatingView, params);
+            this.windowManager.addView(this.floatingView, layoutParams);
             Log.d(TAG, "Floating window created");
         } catch (Exception e) {
             e.printStackTrace();
@@ -142,93 +122,86 @@ public class FloatingWindowService extends Service {
         }
     }
 
-    private void updateFeedbackText(final String text) {
-        if(text == null || text.isEmpty()) return;
-
-        // 从 JSON 中提取 result 字段
-        final String displayText;
-        try {
-            com.google.gson.JsonElement element = com.google.gson.JsonParser.parseString(text);
-            if (element.isJsonObject()) {
-                com.google.gson.JsonObject json = element.getAsJsonObject();
-                if (json.has("Result") && !json.get("Result").isJsonNull()) {
-                    String result = json.get("Result").getAsString();
-                    ScreenCaptureService.blog("FLOAT: json parsed, Result=" + result);
-                    if (!result.isEmpty()) {
-                        displayText = text;
-                    } else {
-                        ScreenCaptureService.blog("FLOAT: Result empty, skip");
-                        return;
-                    }
-                } else {
-                    ScreenCaptureService.blog("FLOAT: no Result field in json");
-                    return;
-                }
-            } else {
-                ScreenCaptureService.blog("FLOAT: not a JSON object");
-                return;
-            }
-        } catch (Exception e) {
-            ScreenCaptureService.blog("FLOAT: json parse err " + e.getMessage());
+    public void updateFeedbackText(String str) {
+        if (str == null || str.isEmpty()) {
             return;
         }
+        String strResolveDisplayText = resolveDisplayText(str);
+        if (strResolveDisplayText == null || strResolveDisplayText.isEmpty()) {
+            ScreenCaptureService.blog("FLOAT: display text empty, skip");
+            return;
+        }
+        if (this.floatingView == null || this.feedbackText == null) {
+            createFloatingWindow();
+        }
+        if (strResolveDisplayText.length() > MAX_DISPLAY_CHARS) {
+            strResolveDisplayText = strResolveDisplayText.substring(0, MAX_DISPLAY_CHARS) + "...";
+        }
+        TextView textView = this.feedbackText;
+        if (textView != null) {
+            textView.setText(strResolveDisplayText);
+            ScreenCaptureService.blog("FLOAT: displayed");
+        }
+        View view = this.floatingView;
+        if (view != null && view.getVisibility() != 0) {
+            this.floatingView.setVisibility(0);
+        }
+        this.handler.removeCallbacks(this.clearTextRunnable);
+        this.handler.postDelayed(this.clearTextRunnable, CLEAR_TEXT_DELAY_MS);
+    }
 
-        handler.post(() -> {
-            if(feedbackText != null) {
-                feedbackText.setText(displayText);
-                ScreenCaptureService.blog("FLOAT: displayed");
+    private String resolveDisplayText(String str) {
+        if (!str.startsWith(RESULT_PREFIX)) {
+            return str;
+        }
+        try {
+            JsonElement string = JsonParser.parseString(str.substring(RESULT_PREFIX.length()));
+            if (!string.isJsonObject()) {
+                ScreenCaptureService.blog("FLOAT: result payload not JSON object, skip");
+                return null;
             }
-
-            handler.removeCallbacks(hideRunnable);
-
-            if(floatingView != null) {
-                floatingView.setVisibility(View.VISIBLE);
+            JsonObject asJsonObject = string.getAsJsonObject();
+            if (asJsonObject.has("Result") && !asJsonObject.get("Result").isJsonNull()) {
+                String asString = asJsonObject.get("Result").getAsString();
+                if (asString != null && !asString.isEmpty()) {
+                    ScreenCaptureService.blog("FLOAT: json parsed, Result=" + asString);
+                    return asString;
+                }
+                ScreenCaptureService.blog("FLOAT: Result empty, skip");
+                return null;
             }
-            // 5s后自动隐藏
-            handler.postDelayed(hideRunnable, 5000);
-        });
+            ScreenCaptureService.blog("FLOAT: Result missing, skip");
+            return null;
+        } catch (Exception e) {
+            ScreenCaptureService.blog("FLOAT: result parse err, skip " + e.getMessage());
+            return null;
+        }
     }
 
     private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "悬浮窗服务",
-                    NotificationManager.IMPORTANCE_LOW
-            );
-            channel.setDescription("显示屏幕录制反馈");
-
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            manager.createNotificationChannel(channel);
-        }
+        NotificationChannel notificationChannel = new NotificationChannel(CHANNEL_ID, "悬浮窗服务", 2);
+        notificationChannel.setDescription("显示屏幕录制反馈");
+        ((NotificationManager) getSystemService(NotificationManager.class)).createNotificationChannel(notificationChannel);
     }
 
     private Notification createNotification() {
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("屏幕录制反馈")
-                .setContentText("显示录制状态反馈")
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .build();
+        return new NotificationCompat.Builder(this, CHANNEL_ID).setContentTitle("屏幕录制反馈").setContentText("显示录制状态反馈").setSmallIcon(android.R.drawable.ic_dialog_info).setPriority(-1).build();
     }
 
-    @Override
+    @Override // android.app.Service
     public void onDestroy() {
+        WindowManager windowManager;
         super.onDestroy();
         try {
-            handler.removeCallbacks(hideRunnable);
-            unregisterReceiver(updateReceiver);
+            this.handler.removeCallbacks(this.clearTextRunnable);
+            unregisterReceiver(this.updateReceiver);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        if (floatingView != null && windowManager != null) {
-            windowManager.removeView(floatingView);
+        View view = this.floatingView;
+        if (view == null || (windowManager = this.windowManager) == null) {
+            return;
         }
-    }
-
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
+        windowManager.removeView(view);
     }
 }

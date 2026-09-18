@@ -56,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText etLicenseCode;
     private Button btnActivateLicense;
     private ImageButton btnRefreshQuota;
-    private Button btnEnterAAPoker, btnStopRecording, btnStartRecording;
+    private Button btnEnterAAPoker, btnStopRecording;
     private Button btnWebsite, btnAbout, btnLogout, btnReactivate;
     private LinearLayout layoutRecordingStatus;
     private LinearLayout layoutLicenseActivation;
@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
     private MediaProjectionManager mediaProjectionManager;
     private ScreenCaptureService screenCaptureService;
     private boolean isServiceBound = false;
-    private boolean isEnterAAPokerMode = false;  // true=需自动拉起AAPoker, false=仅录屏
+    private boolean isEnterAAPokerMode = false;
 
     private UserSessionManager session;
 
@@ -115,7 +115,6 @@ public class MainActivity extends AppCompatActivity {
         btnActivateLicense = findViewById(R.id.btn_activate_license);
         btnEnterAAPoker = findViewById(R.id.btn_enter_aapoker);
         btnStopRecording = findViewById(R.id.btn_stop_recording);
-        btnStartRecording = findViewById(R.id.btn_start_recording);
         btnWebsite = findViewById(R.id.btn_website);
         btnAbout = findViewById(R.id.btn_about);
         btnLogout = findViewById(R.id.btn_logout);
@@ -227,7 +226,6 @@ public class MainActivity extends AppCompatActivity {
         btnRefreshQuota.setOnClickListener(v -> refreshQuota());
         btnActivateLicense.setOnClickListener(v -> activateLicense());
         btnEnterAAPoker.setOnClickListener(v -> enterAAPoker());
-        btnStartRecording.setOnClickListener(v -> startRecordingOnly());
         btnStopRecording.setOnClickListener(v -> stopRecording());
         btnReactivate.setOnClickListener(v -> {
             layoutLicenseActivation.setVisibility(View.VISIBLE);
@@ -238,14 +236,14 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "访问官网功能开发中...", Toast.LENGTH_SHORT).show());
 
         btnAbout.setOnClickListener(v -> new AlertDialog.Builder(this)
-                .setTitle("关于 桃园助手")
-                .setMessage("桃园助手 " + getString(R.string.app_version) + "\n\n专业扑克决策辅助平台\n桃园团队出品\n\n© 2026 桃园助手")
+                .setTitle(DialogTextUtils.redBold("关于 桃园助手"))
+                .setMessage(DialogTextUtils.redBold("桃园助手 " + getString(R.string.app_version) + "\n\n专业扑克决策辅助平台\n桃园团队出品\n\n© 2026 桃园助手"))
                 .setPositiveButton("确定", null)
                 .show());
 
         btnLogout.setOnClickListener(v -> new AlertDialog.Builder(this)
-                .setTitle("退出登录")
-                .setMessage("确定要退出当前账户吗？")
+                .setTitle(DialogTextUtils.redBold("退出登录"))
+                .setMessage(DialogTextUtils.redBold("确定要退出当前账户吗？"))
                 .setPositiveButton("确定", (dialog, which) -> doLogout())
                 .setNegativeButton("取消", null)
                 .show());
@@ -407,29 +405,6 @@ public class MainActivity extends AppCompatActivity {
         doRealtimeValidationAndStartCapture();
     }
 
-    /**
-     * 仅开始录屏，不自动拉起 AAPoker——用户手动切 App
-     */
-    private void startRecordingOnly() {
-        if (!session.canEnterScreenCapture()) {
-            showError(session.getCannotEnterReason());
-            return;
-        }
-
-        /*if (TextUtils.isEmpty(session.getLicenseCode())) {
-            showError("请先激活授权码");
-            return;
-        }*/
-
-        if (isServiceBound && screenCaptureService != null && screenCaptureService.isRecording()) {
-            showError("录屏已在运行中，请先停止当前录制");
-            return;
-        }
-
-        isEnterAAPokerMode = false;
-        doRealtimeValidationAndStartCapture();
-    }
-
     private void doRealtimeValidationAndStartCapture() {
         // API 34+ 权限预检（前置，免得实时校验通过后才弹，用户体验差）
         if (Build.VERSION.SDK_INT >= 34) {
@@ -444,14 +419,9 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // ---- 实时校验：通过 HTTP 查询最新额度，防止本地缓存过期 ----
-        ScreenCaptureService.blog("[Main] Validation: start mode=" + (isEnterAAPokerMode ? "enter" : "recOnly"));
+        ScreenCaptureService.blog("[Main] Validation: start mode=enter");
         btnEnterAAPoker.setEnabled(false);
-        btnStartRecording.setEnabled(false);
-        if (isEnterAAPokerMode) {
-            btnEnterAAPoker.setText("校验中...");
-        } else {
-            btnStartRecording.setText("校验中...");
-        }
+        btnEnterAAPoker.setText("校验中...");
 
         new Thread(() -> {
             try {
@@ -468,12 +438,10 @@ public class MainActivity extends AppCompatActivity {
                     runOnUiThread(() -> {
                         btnEnterAAPoker.setEnabled(true);
                         btnEnterAAPoker.setText(R.string.btn_enter);
-                        btnStartRecording.setEnabled(true);
-                        btnStartRecording.setText(R.string.btn_start_recording);
                         session.logout();
                         new AlertDialog.Builder(MainActivity.this)
-                                .setTitle("登录已过期")
-                                .setMessage("您的登录已过期，请重新登录")
+                                .setTitle(DialogTextUtils.redBold("登录已过期"))
+                                .setMessage(DialogTextUtils.redBold("您的登录已过期，请重新登录"))
                                 .setPositiveButton("确定", (d, w) -> redirectToLogin())
                                 .setCancelable(false)
                                 .show();
@@ -486,8 +454,6 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     btnEnterAAPoker.setEnabled(true);
                     btnEnterAAPoker.setText(R.string.btn_enter);
-                    btnStartRecording.setEnabled(true);
-                    btnStartRecording.setText(R.string.btn_start_recording);
 
                     if (!api.isBizSuccess(response)) {
                         showError(response.statusMessage.isEmpty()
@@ -525,8 +491,6 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     btnEnterAAPoker.setEnabled(true);
                     btnEnterAAPoker.setText(R.string.btn_enter);
-                    btnStartRecording.setEnabled(true);
-                    btnStartRecording.setText(R.string.btn_start_recording);
                     showError("网络连接失败: " + e.getMessage());
                 });
             }
@@ -639,7 +603,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void showError(String message) {
         new AlertDialog.Builder(this)
-                .setTitle("提示").setMessage(message)
+                .setTitle(DialogTextUtils.redBold("提示")).setMessage(DialogTextUtils.redBold(message))
                 .setPositiveButton("确定", null).show();
     }
 
@@ -668,8 +632,8 @@ public class MainActivity extends AppCompatActivity {
                 stopRecording();
             }
             new AlertDialog.Builder(this)
-                    .setTitle("登录已过期")
-                    .setMessage("您的登录已过期，请重新登录")
+                    .setTitle(DialogTextUtils.redBold("登录已过期"))
+                    .setMessage(DialogTextUtils.redBold("您的登录已过期，请重新登录"))
                     .setPositiveButton("确定", (d, w) -> redirectToLogin())
                     .setCancelable(false)
                     .show();
@@ -724,8 +688,8 @@ public class MainActivity extends AppCompatActivity {
                         ScreenCaptureService.blog("[Main] verifyAuth: auth lost, stopping rec: " + reason);
                         stopRecording();
                         new AlertDialog.Builder(MainActivity.this)
-                                .setTitle("录制已停止")
-                                .setMessage("您的授权已失效：" + reason)
+                                .setTitle(DialogTextUtils.redBold("录制已停止"))
+                                .setMessage(DialogTextUtils.redBold("您的授权已失效：" + reason))
                                 .setPositiveButton("确定", null)
                                 .show();
                     } else {

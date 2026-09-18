@@ -69,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean isEnterAAPokerMode = false;
 
     private UserSessionManager session;
+    private boolean quotaRefreshInFlight;
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -283,45 +284,60 @@ public class MainActivity extends AppCompatActivity {
     // ==================== 刷新额度 ====================
 
     private void refreshQuota() {
+        refreshQuota(true);
+    }
+
+    private void refreshQuota(boolean notifySuccess) {
+        if (quotaRefreshInFlight || isFinishing() || isDestroyed()) return;
+        quotaRefreshInFlight = true;
         btnRefreshQuota.setEnabled(false);
         btnRefreshQuota.setAlpha(0.3f);
+        String token = session.getToken();
+        String email = session.getEmail();
 
         new Thread(() -> {
             try {
-                String accountId = session.getAccountId();
                 ApiService api = ApiService.getInstance(MainActivity.this);
-                ApiService.BizResponse response = api.getQuota(session.getEmail(), session.getToken());
+                ApiService.BizResponse response = api.getQuota(email, token);
+                if (!api.isBizSuccess(response) || response.data == null) {
+                    throw new IllegalStateException(response.statusMessage.isEmpty()
+                            ? "获取额度失败" : response.statusMessage);
+                }
+                // Parse off the UI thread so malformed responses take the error path.
+                JsonObject data = response.data;
+                long quota = data.has("amount") && !data.get("amount").isJsonNull()
+                        ? data.get("amount").getAsLong() : 0;
+                long expireAt = data.has("expire_at") && !data.get("expire_at").isJsonNull()
+                        ? data.get("expire_at").getAsLong() : 0;
+                boolean isActive = data.has("is_active") && !data.get("is_active").isJsonNull()
+                        && data.get("is_active").getAsBoolean();
 
                 runOnUiThread(() -> {
+                    quotaRefreshInFlight = false;
+                    if (isFinishing() || isDestroyed()) return;
                     btnRefreshQuota.setEnabled(true);
                     btnRefreshQuota.setAlpha(1.0f);
-
-                    if (api.isBizSuccess(response) && response.data != null) {
-                        JsonObject d = response.data;
-                        long quota = d.has("amount") ? d.get("amount").getAsLong() : 0;
-                        long expireAt = d.has("expire_at") ? d.get("expire_at").getAsLong() : 0;
-
-                        session.setQuota(quota);
-                        session.setExpireAt(expireAt);
-
-                        boolean isActive = d.has("is_active") && d.get("is_active").getAsBoolean();
-                        session.setLicenseActivated(isActive);
-                        session.setDeviceBound(isActive);
-                        updateDeviceStatus();
-                        updateLicenseActivationUI();
-
-                        updateQuotaDisplay(session.getEffectiveQuota());
-                        updateExpireDisplay(expireAt);
+                    if (!session.isLoggedIn() || !TextUtils.equals(token, session.getToken())) return;
+                    session.setQuota(quota);
+                    session.setExpireAt(expireAt);
+                    session.setLicenseActivated(isActive);
+                    session.setDeviceBound(isActive);
+                    updateDeviceStatus();
+                    updateLicenseActivationUI();
+                    updateQuotaDisplay(session.getEffectiveQuota());
+                    updateExpireDisplay(expireAt);
+                    if (notifySuccess) {
                         Toast.makeText(MainActivity.this, "额度已刷新", Toast.LENGTH_SHORT).show();
-                    } else {
-                        showError(response.statusMessage.isEmpty() ? "获取额度失败" : response.statusMessage);
                     }
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
+                    quotaRefreshInFlight = false;
+                    if (isFinishing() || isDestroyed()) return;
                     btnRefreshQuota.setEnabled(true);
                     btnRefreshQuota.setAlpha(1.0f);
-                    showError("网络连接失败: " + e.getMessage());
+                    if (!session.isLoggedIn() || !TextUtils.equals(token, session.getToken())) return;
+                    showError("额度刷新失败: " + e.getMessage());
                 });
             }
         }).start();
@@ -617,6 +633,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (isFinishing() || session == null || !session.isLoggedIn() || tvQuota == null) return;
         updateRecordingUI();
         if (isServiceBound && screenCaptureService != null) {
             ScreenCaptureService.blog("[Main] onResume bound=" + isServiceBound + " rec=" + screenCaptureService.isRecording());
@@ -643,6 +660,9 @@ public class MainActivity extends AppCompatActivity {
         // 如果正在录制，实时校验授权状态（防止录制期间授权过期或额度耗尽）
         if (isServiceBound && screenCaptureService != null && screenCaptureService.isRecording()) {
             verifyAuthorizationWhileRecording();
+        } else {
+            // Initial entry and returning from the background both refresh quota.
+            refreshQuota(false);
         }
     }
 

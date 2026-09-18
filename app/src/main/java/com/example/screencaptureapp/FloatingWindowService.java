@@ -150,30 +150,25 @@ public class FloatingWindowService extends Service {
         this.handler.postDelayed(this.clearTextRunnable, CLEAR_TEXT_DELAY_MS);
     }
 
-    private String resolveDisplayText(String str) {
-        if (!str.startsWith(RESULT_PREFIX)) {
-            return str;
+    static String resolveDisplayText(String str) {
+        // Only server Result text may replace the initial waiting placeholder.
+        if (str == null || !str.startsWith(RESULT_PREFIX)) {
+            return null;
         }
         try {
             JsonElement string = JsonParser.parseString(str.substring(RESULT_PREFIX.length()));
             if (!string.isJsonObject()) {
-                ScreenCaptureService.blog("FLOAT: result payload not JSON object, skip");
                 return null;
             }
             JsonObject asJsonObject = string.getAsJsonObject();
-            if (asJsonObject.has("Result") && !asJsonObject.get("Result").isJsonNull()) {
-                String asString = asJsonObject.get("Result").getAsString();
-                if (asString != null && !asString.isEmpty()) {
-                    ScreenCaptureService.blog("FLOAT: json parsed, Result=" + asString);
-                    return asString;
-                }
-                ScreenCaptureService.blog("FLOAT: Result empty, skip");
-                return null;
+            JsonElement result = asJsonObject.get("Result");
+            if (result != null && result.isJsonPrimitive()
+                    && result.getAsJsonPrimitive().isString()) {
+                String text = result.getAsString().trim();
+                return text.isEmpty() ? null : text;
             }
-            ScreenCaptureService.blog("FLOAT: Result missing, skip");
             return null;
         } catch (Exception e) {
-            ScreenCaptureService.blog("FLOAT: result parse err, skip " + e.getMessage());
             return null;
         }
     }

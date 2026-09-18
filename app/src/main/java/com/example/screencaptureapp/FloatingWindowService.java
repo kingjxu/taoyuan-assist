@@ -138,7 +138,7 @@ public class FloatingWindowService extends Service {
                     PixelFormat.TRANSLUCENT);
             params.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
             params.x = 20;
-            params.y = 100;
+            params.y = 50;
             params.windowAnimations = 0;
             windowManager.addView(candidate, params);
             // Publish only after addView succeeds, so a failed attempt is retryable.

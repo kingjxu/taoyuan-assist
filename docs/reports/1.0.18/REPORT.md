@@ -14,3 +14,8 @@
 
 ## 未验证与真机检查
 没有连接Android设备，本次未宣称通过真机/真实账号联调。额度进入/返回前台、手动刷新、网络失败、返回时正在录制、退出页面后响应到达需真机确认；反馈需确认初始占位、有效Result样式、错误不覆盖、5秒清空、新结果重置计时和长文字截断。无服务端代码或接口契约变更。
+
+## CR 补改
+- 同步app_version为v1.0.18，登录、注册、主界面和关于弹窗共用该资源；构建后检查实际APK资源与Gradle版本一致，脚本和结果已归档。
+- 接收器统一ContextCompat.RECEIVER_NOT_EXPORTED，发送端指定包名。核对实际依赖androidx.core1.13的Api26Impl字节码：NOT_EXPORTED且无显式permission时调用obtainAndCheckReceiverPermission，再带permission注册。APK已合并声明及申请DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION，保护级别signature=0x2。应用自身持有该权限，其他未共享签名的应用无法取得它。
+- 重新执行单测和构建通过，apksigner与check_apk静态检查通过。adb devices无连接设备；内部广播可达和外部应用广播不可达仅核验了源码/依赖/权限链路，未声称跨UID真机测试通过。

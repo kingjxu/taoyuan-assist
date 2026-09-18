@@ -8,7 +8,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
@@ -18,6 +17,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.TextView;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -86,11 +86,8 @@ public class FloatingWindowService extends Service {
         intentFilter.addAction(ACTION_UPDATE_TEXT);
         intentFilter.addAction(ACTION_HIDE_WINDOW);
         intentFilter.addAction(ACTION_SHOW_WINDOW);
-        if (Build.VERSION.SDK_INT >= 33) {
-            registerReceiver(this.updateReceiver, intentFilter, 4);
-        } else {
-            registerReceiver(this.updateReceiver, intentFilter);
-        }
+        ContextCompat.registerReceiver(this, updateReceiver, intentFilter,
+                ContextCompat.RECEIVER_NOT_EXPORTED);
     }
 
     @Override

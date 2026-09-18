@@ -550,6 +550,7 @@ public class ScreenCaptureService extends Service {
             blog("FLOAT: " + text);
         }
         Intent intent = new Intent(FloatingWindowService.ACTION_UPDATE_TEXT);
+        intent.setPackage(getPackageName());
         intent.putExtra(FloatingWindowService.EXTRA_TEXT, text);
         sendBroadcast(intent);
     }

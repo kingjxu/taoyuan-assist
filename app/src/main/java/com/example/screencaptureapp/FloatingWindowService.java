@@ -10,10 +10,12 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Handler;
 import android.os.IBinder;
+import android.provider.Settings;
+import android.graphics.PixelFormat;
+import android.view.Gravity;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.TextView;
 import androidx.core.app.NotificationCompat;
@@ -37,6 +39,8 @@ public class FloatingWindowService extends Service {
     private View floatingView;
     private Handler handler;
     private WindowManager windowManager;
+    private boolean receiverRegistered;
+    private boolean startupFailed;
     private final Runnable clearTextRunnable = new Runnable() {
         @Override
         public void run() {
@@ -81,41 +85,73 @@ public class FloatingWindowService extends Service {
         Log.d(TAG, "Service onCreate");
         this.windowManager = (WindowManager) getSystemService("window");
         this.handler = new Handler(getMainLooper());
-        createNotificationChannel();
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(ACTION_UPDATE_TEXT);
         intentFilter.addAction(ACTION_HIDE_WINDOW);
         intentFilter.addAction(ACTION_SHOW_WINDOW);
-        ContextCompat.registerReceiver(this, updateReceiver, intentFilter,
-                ContextCompat.RECEIVER_NOT_EXPORTED);
+        try {
+            ContextCompat.registerReceiver(this, updateReceiver, intentFilter,
+                    ContextCompat.RECEIVER_NOT_EXPORTED);
+            receiverRegistered = true;
+        } catch (RuntimeException e) {
+            startupFailed = true;
+            OverlayDiagnostics.report(this, "悬浮窗服务初始化失败，请停止录制后重试。", e);
+        }
     }
 
     @Override
-    public int onStartCommand(Intent intent, int i, int i2) {
-        Log.d(TAG, "Service onStartCommand");
-        startForeground(1002, createNotification());
-        if (this.floatingView != null) {
-            return 1;
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (startupFailed) {
+            stopSelf();
+            return START_NOT_STICKY;
         }
-        createFloatingWindow();
-        return 1;
+        try {
+            createNotificationChannel();
+            startForeground(NOTIFICATION_ID, createNotification());
+        } catch (RuntimeException e) {
+            OverlayDiagnostics.report(this, "系统未能启动悬浮窗前台服务，请检查应用权限后重新开始录制。", e);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        if (!createFloatingWindow()) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        return START_STICKY;
     }
 
-    private void createFloatingWindow() {
-        View viewInflate = LayoutInflater.from(this).inflate(R.layout.floating_window, (ViewGroup) null);
-        this.floatingView = viewInflate;
-        this.feedbackText = (TextView) viewInflate.findViewById(R.id.tv_feedback);
-        WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams(-2, -2, 2038, 296, -3);
-        layoutParams.gravity = 49;
-        layoutParams.x = 20;
-        layoutParams.y = 100;
-        layoutParams.windowAnimations = 0;
+    private boolean createFloatingWindow() {
+        if (!Settings.canDrawOverlays(this)) {
+            OverlayDiagnostics.report(this, "悬浮窗权限未开启，无法显示等待反馈或识别结果。请到系统设置允许悬浮窗，再重新开始录制。", null);
+            return false;
+        }
+        if (floatingView != null) return true;
         try {
-            this.windowManager.addView(this.floatingView, layoutParams);
+            View candidate = LayoutInflater.from(this).inflate(R.layout.floating_window, null);
+            TextView candidateText = candidate.findViewById(R.id.tv_feedback);
+            WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                    WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                            | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                            | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+                    PixelFormat.TRANSLUCENT);
+            params.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+            params.x = 20;
+            params.y = 100;
+            params.windowAnimations = 0;
+            windowManager.addView(candidate, params);
+            // Publish only after addView succeeds, so a failed attempt is retryable.
+            floatingView = candidate;
+            feedbackText = candidateText;
+            OverlayDiagnostics.clear(this);
             Log.d(TAG, "Floating window created");
-        } catch (Exception e) {
-            e.printStackTrace();
-            Log.e(TAG, "Error creating floating window: " + e.getMessage());
+            return true;
+        } catch (RuntimeException e) {
+            floatingView = null;
+            feedbackText = null;
+            OverlayDiagnostics.report(this, "悬浮窗创建失败。请检查系统的悬浮窗限制；若已允许，请停止录制后重试。", e);
+            return false;
         }
     }
 
@@ -128,8 +164,9 @@ public class FloatingWindowService extends Service {
             ScreenCaptureService.blog("FLOAT: display text empty, skip");
             return;
         }
-        if (this.floatingView == null || this.feedbackText == null) {
-            createFloatingWindow();
+        if (!createFloatingWindow()) {
+            stopSelf();
+            return;
         }
         if (strResolveDisplayText.length() > MAX_DISPLAY_CHARS) {
             strResolveDisplayText = strResolveDisplayText.substring(0, MAX_DISPLAY_CHARS) + "...";
@@ -180,20 +217,19 @@ public class FloatingWindowService extends Service {
         return new NotificationCompat.Builder(this, CHANNEL_ID).setContentTitle("屏幕录制反馈").setContentText("显示录制状态反馈").setSmallIcon(android.R.drawable.ic_dialog_info).setPriority(-1).build();
     }
 
-    @Override // android.app.Service
+    @Override
     public void onDestroy() {
-        WindowManager windowManager;
+        handler.removeCallbacks(clearTextRunnable);
+        if (receiverRegistered) unregisterReceiver(updateReceiver);
+        if (floatingView != null) {
+            try {
+                windowManager.removeView(floatingView);
+            } catch (RuntimeException e) {
+                Log.w(TAG, "Overlay already removed by system", e);
+            }
+        }
+        floatingView = null;
+        feedbackText = null;
         super.onDestroy();
-        try {
-            this.handler.removeCallbacks(this.clearTextRunnable);
-            unregisterReceiver(this.updateReceiver);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        View view = this.floatingView;
-        if (view == null || (windowManager = this.windowManager) == null) {
-            return;
-        }
-        windowManager.removeView(view);
     }
 }

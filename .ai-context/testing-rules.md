@@ -1,5 +1,5 @@
 ---
-version: "1.0"
+version: "1.1"
 last_updated: "2026-09-18"
 ---
 # 构建与验证
@@ -8,3 +8,5 @@ last_updated: "2026-09-18"
 本机 SDK 和可写 Gradle 缓存在 /tmp/taoyuan-android-sdk 和 /tmp/taoyuan-gradle。没有真机时不能声称已验证登录、悬浮窗权限和录屏全链路。
 
 `scripts/check_apk.py <build-tools目录> <APK>` 检查Gradle版本、页面app_version资源、APK内实际字符串、签名与动态广播签名权限声明；它不替代跨应用广播真机验证。
+
+OverlayWindowTest 使用 Robolectric4.13/API28 验证服务窗口创建失败重试、权限缺失记录、前台弹窗、后台待提示、设置入口以及等待/5秒计时。模拟环境须显式授予 APK 已声明的应用签名广播权限和普通权限，不放宽生产注册策略。测试通过不代表鸿蒙真机覆盖；MainActivity 弹窗测试只创建页面、直接驱动提示方法和私有广播，不调用 onResume 发真实额度网络请求。

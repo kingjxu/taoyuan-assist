@@ -2,6 +2,9 @@ package com.example.screencaptureapp;
 
 import android.app.Activity;
 import android.content.ComponentName;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.IntentFilter;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
@@ -70,6 +73,14 @@ public class MainActivity extends AppCompatActivity {
 
     private UserSessionManager session;
     private boolean quotaRefreshInFlight;
+    private boolean activityResumed;
+    private boolean overlayReceiverRegistered;
+    private AlertDialog overlayDialog;
+    private final BroadcastReceiver overlayReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (activityResumed) showOverlayProblemIfNeeded();
+        }
+    };
 
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -99,6 +110,14 @@ public class MainActivity extends AppCompatActivity {
         checkPermissions();
         loadSessionData();
         setupListeners();
+        try {
+            ContextCompat.registerReceiver(this, overlayReceiver,
+                    new IntentFilter(OverlayDiagnostics.ACTION_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED);
+            overlayReceiverRegistered = true;
+        } catch (RuntimeException e) {
+            // The persisted error is still checked onResume if live delivery fails.
+            OverlayDiagnostics.report(this, "悬浮窗状态监听启动失败，请重启助手后重试。", e);
+        }
 
         mediaProjectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
     }
@@ -211,13 +230,6 @@ public class MainActivity extends AppCompatActivity {
         String[] permissions = permissionList.toArray(new String[0]);
         if (!PermissionHelper.hasPermissions(this, permissions)) {
             ActivityCompat.requestPermissions(this, permissions, REQUEST_PERMISSIONS);
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(this)) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION);
-            }
         }
     }
 
@@ -401,6 +413,10 @@ public class MainActivity extends AppCompatActivity {
      * 3. 实时校验通过 → 开始录屏鉴权 + 拉起 AAPoker
      */
     private void enterAAPoker() {
+        if (!Settings.canDrawOverlays(this)) {
+            showOverlayProblemIfNeeded();
+            return;
+        }
         // 本地快速校验
         if (!session.canEnterScreenCapture()) {
             showError(session.getCannotEnterReason());
@@ -566,11 +582,18 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == REQUEST_CODE_SCREEN_CAPTURE) {
             if (resultCode == Activity.RESULT_OK && isServiceBound) {
                 ScreenCaptureService.blog("[Main] onAR OK: enterMode=" + isEnterAAPokerMode);
-                Intent intent = new Intent(this, FloatingWindowService.class);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(intent);
-                } else {
-                    startService(intent);
+                if (!Settings.canDrawOverlays(this)) {
+                    stopRecording();
+                    showOverlayProblemIfNeeded();
+                    return;
+                }
+                try {
+                    ContextCompat.startForegroundService(this, new Intent(this, FloatingWindowService.class));
+                } catch (RuntimeException e) {
+                    OverlayDiagnostics.report(this, "系统拒绝启动悬浮窗服务，请检查应用权限后重试。", e);
+                    stopRecording();
+                    showOverlayProblemIfNeeded();
+                    return;
                 }
                 screenCaptureService.startRecording(resultCode, data);
                 updateRecordingUI();
@@ -623,6 +646,48 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton("确定", null).show();
     }
 
+    private void showOverlayProblemIfNeeded() {
+        if (!activityResumed || isFinishing() || isDestroyed()) return;
+        if (overlayDialog != null && overlayDialog.isShowing()) return;
+        boolean permissionMissing = !Settings.canDrawOverlays(this);
+        String message = permissionMissing
+                ? "未开启悬浮窗权限，无法显示等待反馈和识别结果。请在系统设置中允许桃园助手显示在其他应用上层。"
+                : OverlayDiagnostics.pendingError(this);
+        if (message.isEmpty()) return;
+        overlayDialog = new AlertDialog.Builder(this)
+                .setTitle("悬浮窗无法显示")
+                .setMessage(message)
+                .setPositiveButton("去设置", (dialog, which) -> {
+                    OverlayDiagnostics.clear(this);
+                    openOverlaySettings();
+                })
+                .setNegativeButton("知道了", (dialog, which) -> OverlayDiagnostics.clear(this))
+                .create();
+        overlayDialog.show();
+    }
+
+    private void openOverlaySettings() {
+        Intent settings = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:" + getPackageName()));
+        try {
+            startActivityForResult(settings, REQUEST_OVERLAY_PERMISSION);
+        } catch (RuntimeException e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (RuntimeException fallbackError) {
+                showError("无法打开系统设置，请手动进入设置，允许桃园助手显示悬浮窗。");
+            }
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        activityResumed = false;
+        if (overlayDialog != null) overlayDialog.dismiss();
+        super.onPause();
+    }
+
     private void redirectToLogin() {
         Intent intent = new Intent(MainActivity.this, LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -634,6 +699,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (isFinishing() || session == null || !session.isLoggedIn() || tvQuota == null) return;
+        activityResumed = true;
         updateRecordingUI();
         if (isServiceBound && screenCaptureService != null) {
             ScreenCaptureService.blog("[Main] onResume bound=" + isServiceBound + " rec=" + screenCaptureService.isRecording());
@@ -656,6 +722,8 @@ public class MainActivity extends AppCompatActivity {
                     .show();
             return;
         }
+
+        showOverlayProblemIfNeeded();
 
         // 如果正在录制，实时校验授权状态（防止录制期间授权过期或额度耗尽）
         if (isServiceBound && screenCaptureService != null && screenCaptureService.isRecording()) {
@@ -725,6 +793,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (overlayReceiverRegistered) unregisterReceiver(overlayReceiver);
+        if (overlayDialog != null) overlayDialog.dismiss();
         if (isServiceBound) unbindService(serviceConnection);
     }
 }

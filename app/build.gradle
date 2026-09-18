@@ -10,8 +10,8 @@ android {
         applicationId "com.example.screencaptureapp"
         minSdk 26
         targetSdk 33
-        versionCode 11
-        versionName "1.0.18"
+        versionCode 12
+        versionName "1.0.19"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -20,6 +20,9 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+    testOptions {
+        unitTests.includeAndroidResources = true
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -38,6 +41,7 @@ dependencies {
     implementation libs.activity
     implementation libs.constraintlayout
     testImplementation libs.junit
+    testImplementation "org.robolectric:robolectric:4.13"
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
 }

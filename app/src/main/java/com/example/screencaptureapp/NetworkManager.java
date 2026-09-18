@@ -45,108 +45,116 @@ public class NetworkManager {
     private final ReusableByteArrayOutputStream reusableStream = new ReusableByteArrayOutputStream(262144);
     private OkHttpClient client = createHttpClient();
 
-    public NetworkManager(Context context, String str, String str2) {
+    public NetworkManager(Context context, String accountId, String token) {
         this.context = context;
-        this.uuid = str;
-        this.token = str2;
+        this.uuid = accountId;
+        this.token = token;
     }
 
     private OkHttpClient createHttpClient() {
-        return new OkHttpClient.Builder().connectTimeout(5L, TimeUnit.SECONDS).readTimeout(12L, TimeUnit.SECONDS).writeTimeout(10L, TimeUnit.SECONDS).retryOnConnectionFailure(true).build();
+        return new OkHttpClient.Builder()
+                .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .retryOnConnectionFailure(true)
+                .build();
     }
 
-    public String uploadImage(Bitmap bitmap, long j) throws IOException {
-        long jCurrentTimeMillis = System.currentTimeMillis();
-        this.reusableStream.reset();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 50, this.reusableStream);
-        long jCurrentTimeMillis2 = System.currentTimeMillis();
-        int count = this.reusableStream.getCount();
-        ScreenCaptureService.blog("NET: compress " + count + "B " + (jCurrentTimeMillis2 - jCurrentTimeMillis) + "ms");
-        ScreenCaptureService.blog("NET: sending streaming body jpeg=" + count + "B");
-        Request.Builder builderAddHeader = new Request.Builder().url(UPLOAD_URL).post(createUploadRequestBody(this.reusableStream.getBuffer(), this.reusableStream.getCount(), j)).addHeader("User-Agent", "ScreenCaptureApp/1.0").addHeader("Content-Type", "application/json");
-        StringBuilder sb = new StringBuilder("Bearer ");
-        String str = this.token;
-        if (str == null) {
-            str = "";
-        }
-        Call callNewCall = this.client.newCall(builderAddHeader.addHeader("Authorization", sb.append(str).toString()).build());
-        if (!this.inFlightUploadCall.compareAndSet(null, callNewCall)) {
+    public String uploadImage(Bitmap bitmap, long timestamp) throws IOException {
+        long compressStartTime = System.currentTimeMillis();
+        reusableStream.reset();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 50, reusableStream);
+        long compressEndTime = System.currentTimeMillis();
+        int jpegSize = reusableStream.getCount();
+        ScreenCaptureService.blog("NET: compress " + jpegSize + "B "
+                + (compressEndTime - compressStartTime) + "ms");
+        ScreenCaptureService.blog("NET: sending streaming body jpeg=" + jpegSize + "B");
+
+        Request request = new Request.Builder()
+                .url(UPLOAD_URL)
+                .post(createUploadRequestBody(reusableStream.getBuffer(), jpegSize, timestamp))
+                .addHeader("User-Agent", "ScreenCaptureApp/1.0")
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", "Bearer " + (token == null ? "" : token))
+                .build();
+        Call call = client.newCall(request);
+        if (!inFlightUploadCall.compareAndSet(null, call)) {
             throw new IOException("Upload request already in flight");
         }
-        try {
-            Response responseExecute = callNewCall.execute();
-            try {
-                long jCurrentTimeMillis3 = System.currentTimeMillis();
-                if (responseExecute.isSuccessful() && responseExecute.body() != null) {
-                    String strString = responseExecute.body().string();
-                    ScreenCaptureService.blog("NET: OK " + (jCurrentTimeMillis3 - jCurrentTimeMillis2) + "ms resp=" + strString.length() + "B");
-                    if (responseExecute != null) {
-                        responseExecute.close();
-                    }
-                    return strString;
-                }
-                ScreenCaptureService.blog("NET: FAIL " + responseExecute.code() + " " + (jCurrentTimeMillis3 - jCurrentTimeMillis2) + "ms");
-                throw new IOException("Server error: " + responseExecute.code());
-            } finally {
+
+        try (Response response = call.execute()) {
+            long requestEndTime = System.currentTimeMillis();
+            if (response.isSuccessful() && response.body() != null) {
+                String responseBody = response.body().string();
+                ScreenCaptureService.blog("NET: OK " + (requestEndTime - compressEndTime)
+                        + "ms resp=" + responseBody.length() + "B");
+                return responseBody;
             }
+            ScreenCaptureService.blog("NET: FAIL " + response.code() + " "
+                    + (requestEndTime - compressEndTime) + "ms");
+            throw new IOException("Server error: " + response.code());
         } finally {
-            this.inFlightUploadCall.compareAndSet(callNewCall, null);
+            inFlightUploadCall.compareAndSet(call, null);
         }
     }
 
     public void cancelInFlightUpload() {
-        Call andSet = this.inFlightUploadCall.getAndSet(null);
-        if (andSet != null) {
+        Call call = inFlightUploadCall.getAndSet(null);
+        if (call != null) {
             ScreenCaptureService.blog("NET: cancel in-flight upload");
-            andSet.cancel();
+            call.cancel();
         }
     }
 
-    private RequestBody createUploadRequestBody(final byte[] bArr, final int i, final long j) {
-        return new RequestBody() { // from class: com.example.screencaptureapp.NetworkManager.1
-            @Override // okhttp3.RequestBody
+    private RequestBody createUploadRequestBody(
+            final byte[] jpegBuffer,
+            final int jpegLength,
+            final long timestamp
+    ) {
+        return new RequestBody() {
+            @Override
             public MediaType contentType() {
-                return NetworkManager.JSON;
+                return JSON;
             }
 
-            @Override // okhttp3.RequestBody
-            public void writeTo(BufferedSink bufferedSink) throws IOException {
-                bufferedSink.writeUtf8("{\"images\":[\"");
-                Base64OutputStream base64OutputStream = new Base64OutputStream(new NonClosingOutputStream(bufferedSink.outputStream()), 2);
+            @Override
+            public void writeTo(BufferedSink sink) throws IOException {
+                sink.writeUtf8("{\"images\":[\"");
+                Base64OutputStream base64Stream = new Base64OutputStream(
+                        new NonClosingOutputStream(sink.outputStream()),
+                        android.util.Base64.NO_WRAP
+                );
                 try {
-                    base64OutputStream.write(bArr, 0, i);
-                    base64OutputStream.close();
-                    bufferedSink.writeUtf8("\"],\"timestamp\":");
-                    bufferedSink.writeUtf8(Long.toString(j));
-                    bufferedSink.writeUtf8(",\"uuid\":\"");
-                    NetworkManager networkManager = NetworkManager.this;
-                    networkManager.writeEscapedJsonString(bufferedSink, networkManager.uuid);
-                    bufferedSink.writeUtf8("\"}");
-                } catch (Throwable th) {
-                    base64OutputStream.close();
-                    throw th;
+                    base64Stream.write(jpegBuffer, 0, jpegLength);
+                } finally {
+                    base64Stream.close();
                 }
+                sink.writeUtf8("\"],\"timestamp\":");
+                sink.writeUtf8(Long.toString(timestamp));
+                sink.writeUtf8(",\"uuid\":\"");
+                writeEscapedJsonString(sink, uuid);
+                sink.writeUtf8("\"}");
             }
         };
     }
 
-    private void writeEscapedJsonString(BufferedSink bufferedSink, String str) throws IOException {
-        if (str == null) {
+    private void writeEscapedJsonString(BufferedSink sink, String value) throws IOException {
+        if (value == null) {
             return;
         }
-        for (int i = 0; i < str.length(); i++) {
-            char cCharAt = str.charAt(i);
-            if (cCharAt == '\t') {
-                bufferedSink.writeUtf8("\\t");
-            } else if (cCharAt == '\n') {
-                bufferedSink.writeUtf8("\\n");
-            } else if (cCharAt == '\r') {
-                bufferedSink.writeUtf8("\\r");
-            } else if (cCharAt == '\"' || cCharAt == '\\') {
-                bufferedSink.writeByte(92);
-                bufferedSink.writeByte(cCharAt);
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            if (character == '\t') {
+                sink.writeUtf8("\\t");
+            } else if (character == '\n') {
+                sink.writeUtf8("\\n");
+            } else if (character == '\r') {
+                sink.writeUtf8("\\r");
+            } else if (character == '"' || character == '\\') {
+                sink.writeByte('\\');
+                sink.writeByte(character);
             } else {
-                bufferedSink.writeUtf8(str, i, i + 1);
+                sink.writeUtf8(value, index, index + 1);
             }
         }
     }
@@ -172,122 +180,128 @@ public class NetworkManager {
             this.delegate = outputStream;
         }
 
-        @Override // java.io.OutputStream
-        public void write(int i) throws IOException {
-            this.delegate.write(i);
+        @Override
+        public void write(int value) throws IOException {
+            delegate.write(value);
         }
 
-        @Override // java.io.OutputStream
-        public void write(byte[] bArr, int i, int i2) throws IOException {
-            this.delegate.write(bArr, i, i2);
+        @Override
+        public void write(byte[] buffer, int offset, int length) throws IOException {
+            delegate.write(buffer, offset, length);
         }
 
-        @Override // java.io.OutputStream, java.io.Flushable
+        @Override
         public void flush() throws IOException {
-            this.delegate.flush();
+            delegate.flush();
         }
 
-        @Override // java.io.OutputStream, java.io.Closeable, java.lang.AutoCloseable
+        @Override
         public void close() throws IOException {
-            this.delegate.flush();
+            delegate.flush();
         }
     }
 
-    private void saveToPublicPictures(Bitmap bitmap) throws IOException {
-        String str = "DEBUG_" + new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(new Date()) + ".jpg";
+    private void saveToPublicPictures(Bitmap bitmap) {
+        String fileName = "DEBUG_" + new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(new Date()) + ".jpg";
+
+        // 自动清理旧文件
         cleanOldPublicImages();
-        ContentValues contentValues = new ContentValues();
-        contentValues.put("_display_name", str);
-        contentValues.put("mime_type", "image/jpeg");
-        if (Build.VERSION.SDK_INT >= 29) {
-            contentValues.put("relative_path", Environment.DIRECTORY_PICTURES + "/ScreenCaptureDebug");
-            contentValues.put("is_pending", (Integer) 1);
+
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
+        values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+
+        // 指定子目录: Pictures/ScreenCaptureDebug
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/ScreenCaptureDebug");
+            values.put(MediaStore.Images.Media.IS_PENDING, 1);
         }
-        ContentResolver contentResolver = this.context.getContentResolver();
-        Uri uriInsert = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
-        if (uriInsert != null) {
-            try {
-                OutputStream outputStreamOpenOutputStream = contentResolver.openOutputStream(uriInsert);
-                try {
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStreamOpenOutputStream);
-                    if (Build.VERSION.SDK_INT >= 29) {
-                        contentValues.clear();
-                        contentValues.put("is_pending", (Integer) 0);
-                        contentResolver.update(uriInsert, contentValues, null, null);
-                    }
-                    Log.i(TAG, "screen capture success save : " + str + ", to public store!!!");
-                    if (outputStreamOpenOutputStream != null) {
-                        outputStreamOpenOutputStream.close();
-                    }
-                } finally {
+
+        ContentResolver resolver = context.getContentResolver();
+        Uri collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+        Uri imageUri = resolver.insert(collection, values);
+
+        if (imageUri != null) {
+            try (OutputStream os = resolver.openOutputStream(imageUri)) {
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, os);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    values.clear();
+                    values.put(MediaStore.Images.Media.IS_PENDING, 0);
+                    resolver.update(imageUri, values, null, null);
                 }
+                Log.i(TAG, "screen capture success save : " + fileName +", to public store!!!");
             } catch (Exception e) {
                 Log.e(TAG, "screen capture save to public store failed", e);
-                contentResolver.delete(uriInsert, null, null);
+                resolver.delete(imageUri, null, null);
             }
         }
     }
 
+    /**
+     * 清理逻辑：删除 MediaStore 中属于本应用的旧调试图
+     */
     private void cleanOldPublicImages() {
         try {
-            ContentResolver contentResolver = this.context.getContentResolver();
-            Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-            Cursor cursorQuery = contentResolver.query(uri, new String[]{"_id"}, "_display_name LIKE ?", new String[]{"DEBUG_%"}, "date_added ASC");
-            if (cursorQuery != null) {
-                try {
-                    if (cursorQuery.getCount() > 50) {
-                        int count = cursorQuery.getCount() - 50;
-                        int columnIndexOrThrow = cursorQuery.getColumnIndexOrThrow("_id");
-                        for (int i = 0; i < count; i++) {
-                            if (!cursorQuery.moveToNext()) {
-                                break;
-                            }
-                            contentResolver.delete(Uri.withAppendedPath(uri, String.valueOf(cursorQuery.getLong(columnIndexOrThrow))), null, null);
-                        }
+            ContentResolver resolver = context.getContentResolver();
+            Uri collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+
+            // 匹配文件名开头为 DEBUG_ 的图片
+            String selection = MediaStore.Images.Media.DISPLAY_NAME + " LIKE ?";
+            String[] selectionArgs = new String[]{"DEBUG_%"};
+            String sortOrder = MediaStore.Images.Media.DATE_ADDED + " ASC";
+
+            try (Cursor cursor = resolver.query(collection, new String[]{MediaStore.Images.Media._ID}, selection, selectionArgs, sortOrder)) {
+                if (cursor != null && cursor.getCount() > MAX_FILE_COUNT) {
+                    int deleteCount = cursor.getCount() - MAX_FILE_COUNT;
+                    int idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID);
+
+                    for (int i = 0; i < deleteCount && cursor.moveToNext(); i++) {
+                        long id = cursor.getLong(idColumn);
+                        Uri deleteUri = Uri.withAppendedPath(collection, String.valueOf(id));
+                        resolver.delete(deleteUri, null, null);
                     }
-                } finally {
                 }
-            }
-            if (cursorQuery != null) {
-                cursorQuery.close();
             }
         } catch (Exception e) {
             Log.e(TAG, "screen capture clean public store failed", e);
         }
     }
 
-    private void saveBmpToLocalDebugDir(Bitmap bitmap) throws IOException {
+    private void saveBmpToLocalDebugDir(Bitmap bitmap) {
         try {
-            File file = new File(this.context.getExternalFilesDir(null), "debug_images");
-            if (!file.exists() && !file.mkdirs()) {
+            File debugDir = new File(context.getExternalFilesDir(null),"debug_images");
+            if(!debugDir.exists() && !debugDir.mkdirs())
+            {
                 Log.e(TAG, "cannot create debug dir for screen capture app...");
                 return;
             }
-            cleanOldFiles(file);
-            File file2 = new File(file, "SCREEN_" + new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(new Date()) + ".jpg");
-            FileOutputStream fileOutputStream = new FileOutputStream(file2);
-            try {
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, fileOutputStream);
-                Log.i(TAG, "screen capture success save image: " + file2.getName());
-                fileOutputStream.close();
-            } finally {
+
+            cleanOldFiles(debugDir);
+
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(new Date());
+            File file = new File(debugDir, "SCREEN_" + timeStamp + ".jpg");
+
+            try (FileOutputStream fos = new FileOutputStream(file)) {
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, fos);
+                Log.i(TAG, "screen capture success save image: " + file.getName());
             }
-        } catch (Exception unused) {
+        } catch (Exception e)
+        {
             Log.e(TAG, "screen capture save image failed...");
         }
     }
 
-    private void cleanOldFiles(File file) {
-        File[] fileArrListFiles = file.listFiles();
-        if (fileArrListFiles == null || fileArrListFiles.length <= 50) {
-            return;
-        }
-        Arrays.sort(fileArrListFiles, (first, second) ->
-                Long.compare(first.lastModified(), second.lastModified()));
-        int length = fileArrListFiles.length - 50;
-        for (int i = 0; i < length; i++) {
-            if (fileArrListFiles[i].delete()) {
-                Log.d(TAG, "screen capture success clean image file: " + fileArrListFiles[i].getName());
+    private void cleanOldFiles(File dir) {
+        File[] files = dir.listFiles();
+        if (files != null && files.length > MAX_FILE_COUNT) {
+            // 按修改时间排序（从旧到新）
+            Arrays.sort(files, (f1, f2) -> Long.compare(f1.lastModified(), f2.lastModified()));
+
+            int deleteCount = files.length - MAX_FILE_COUNT;
+            for (int i = 0; i < deleteCount; i++) {
+                if (files[i].delete()) {
+                    Log.d(TAG, "screen capture success clean image file: " + files[i].getName());
+                }
             }
         }
     }

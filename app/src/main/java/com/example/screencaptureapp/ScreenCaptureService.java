@@ -196,6 +196,7 @@ public class ScreenCaptureService extends Service {
         blog("START: got MediaProjection, registering callback");
         // 重置停止标志
         isStopping.set(false);
+        capturePipelineGeneration.incrementAndGet();
 
         // 关键修复：必须在创建 VirtualDisplay 之前注册回调
         mediaProjection.registerCallback(mediaProjectionCallback, handler);
@@ -311,27 +312,11 @@ public class ScreenCaptureService extends Service {
     // 2026/6/4
 
     private void setupImageReader() {
-        imageReader = ImageReader.newInstance(
-                screenWidth,
-                screenHeight,
-                android.graphics.PixelFormat.RGBA_8888,
-                2
-        );
-
-        imageReader.setOnImageAvailableListener(imageAvailableListener, handler);
+        imageReader = createImageReader();
     }
 
     private void createVirtualDisplay() {
-        virtualDisplay = mediaProjection.createVirtualDisplay(
-                "ScreenCapture",
-                screenWidth,
-                screenHeight,
-                screenDensity,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader.getSurface(),
-                null,
-                handler
-        );
+        virtualDisplay = createVirtualDisplay(imageReader);
     }
 
     private final ImageReader.OnImageAvailableListener imageAvailableListener =
@@ -508,7 +493,13 @@ public class ScreenCaptureService extends Service {
                                 ? response.substring(0, 80) + "..." : response;*/
                             blog("UPLOAD: OK " + (tUp1-tUp0) + "ms lat="
                                 + (tUp1-timestamp));
-                            updateFloatingWindow(response);
+                            if (timestamp < latestDisplayedFrameTimeMs) {
+                                blog("UPLOAD: stale response dropped frameTs=" + timestamp
+                                        + " latestDisplayed=" + latestDisplayedFrameTimeMs);
+                            } else {
+                                latestDisplayedFrameTimeMs = timestamp;
+                                updateFloatingWindowWithResultPayload(response);
+                            }
                         } catch (Exception e)
                         {
                             Log.e(TAG, "Error uploading image: " + e.getMessage());
@@ -563,6 +554,10 @@ public class ScreenCaptureService extends Service {
         sendBroadcast(intent);
     }
 
+    private void updateFloatingWindowWithResultPayload(String payload) {
+        updateFloatingWindow("__RESULT__:" + payload);
+    }
+
     public void stopRecording() {
         if (!isRecording && !isStopping.get()) {
             return;
@@ -574,6 +569,7 @@ public class ScreenCaptureService extends Service {
         }
         blog("STOP: called isRec=" + isRecording + " isStop=" + isStopping.get());
         isStopping.set(true);
+        capturePipelineGeneration.incrementAndGet();
         isRecording = false;
         requestCleanFrame = false;
         hasNewFrame = false;
@@ -591,6 +587,9 @@ public class ScreenCaptureService extends Service {
         if (uploadThreadToJoin != null) {
             blog("STOP: interrupting upload thread");
             uploadThreadToJoin.interrupt();
+        }
+        if (networkManager != null) {
+            networkManager.cancelInFlightUpload();
         }
 
         joinThread(captureThreadToJoin, "CaptureControlThread", 2000);
@@ -677,6 +676,8 @@ public class ScreenCaptureService extends Service {
             releaseReusableBitmaps();
             emptyRoundCount = 0;
             lastAcceptedFrameTimeMs = 0L;
+            latestEnqueuedFrameTimeMs = 0L;
+            latestDisplayedFrameTimeMs = 0L;
             capturePipelineRebuildInFlight.set(false);
             isStopping.set(false);
             blog("STOP: done");
@@ -684,6 +685,7 @@ public class ScreenCaptureService extends Service {
     }
 
     private void enqueueLatestFrame(LinkedBlockingQueue<CaptureFrame> frameQueueRef, CaptureFrame newFrame) {
+        latestEnqueuedFrameTimeMs = newFrame.captureTimeMs;
         while (!frameQueueRef.isEmpty()) {
             CaptureFrame oldFrame = frameQueueRef.poll();
             if (oldFrame != null) {
@@ -709,39 +711,128 @@ public class ScreenCaptureService extends Service {
         final long sinceLastAccepted = lastAcceptedFrameTimeMs == 0L
                 ? -1L
                 : (System.currentTimeMillis() - lastAcceptedFrameTimeMs);
+        final int expectedGeneration = capturePipelineGeneration.get();
         blog("CAPT: schedule pipeline rebuild reason=" + reason
                 + " empty=" + emptyRoundCount
-                + " lastAcceptedGap=" + sinceLastAccepted + "ms");
-        handler.post(() -> rebuildCapturePipeline(reason));
+                + " lastAcceptedGap=" + sinceLastAccepted + "ms"
+                + " gen=" + expectedGeneration);
+        handler.post(() -> rebuildCapturePipeline(reason, expectedGeneration));
     }
 
-    private void rebuildCapturePipeline(String reason) {
+    private boolean isCapturePipelineGenerationValidLocked(int expectedGeneration) {
+        return expectedGeneration == capturePipelineGeneration.get()
+                && isRecording
+                && !isStopping.get()
+                && mediaProjection != null;
+    }
+
+    private void closeImageReaderQuietly(ImageReader reader) {
+        if (reader == null) {
+            return;
+        }
         try {
-            if (!isRecording || isStopping.get() || mediaProjection == null) {
-                return;
-            }
-            blog("CAPT: rebuilding pipeline reason=" + reason);
-            if (virtualDisplay != null) {
-                virtualDisplay.release();
+            reader.close();
+        } catch (Throwable t) {
+            Log.w(TAG, "Error closing ImageReader", t);
+        }
+    }
+
+    private void releaseVirtualDisplayQuietly(VirtualDisplay display) {
+        if (display == null) {
+            return;
+        }
+        try {
+            display.release();
+        } catch (Throwable t) {
+            Log.w(TAG, "Error releasing VirtualDisplay", t);
+        }
+    }
+
+    private ImageReader createImageReader() {
+        ImageReader reader = ImageReader.newInstance(
+                screenWidth,
+                screenHeight,
+                android.graphics.PixelFormat.RGBA_8888,
+                2
+        );
+        reader.setOnImageAvailableListener(imageAvailableListener, handler);
+        return reader;
+    }
+
+    private VirtualDisplay createVirtualDisplay(ImageReader targetReader) {
+        return mediaProjection.createVirtualDisplay(
+                "ScreenCapture",
+                screenWidth,
+                screenHeight,
+                screenDensity,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                targetReader.getSurface(),
+                null,
+                handler
+        );
+    }
+
+    private void rebuildCapturePipeline(String reason, int expectedGeneration) {
+        ImageReader newImageReader = null;
+        VirtualDisplay newVirtualDisplay = null;
+        try {
+            synchronized (stopLock) {
+                if (!isCapturePipelineGenerationValidLocked(expectedGeneration)) {
+                    blog("CAPT: rebuild skipped before release reason=" + reason
+                            + " gen=" + expectedGeneration
+                            + " currentGen=" + capturePipelineGeneration.get());
+                    return;
+                }
+
+                blog("CAPT: rebuilding pipeline reason=" + reason
+                        + " gen=" + expectedGeneration);
+                releaseVirtualDisplayQuietly(virtualDisplay);
                 virtualDisplay = null;
-            }
-            if (imageReader != null) {
-                imageReader.close();
+                closeImageReaderQuietly(imageReader);
                 imageReader = null;
+
+                if (!isCapturePipelineGenerationValidLocked(expectedGeneration)) {
+                    blog("CAPT: rebuild aborted after release reason=" + reason
+                            + " gen=" + expectedGeneration
+                            + " currentGen=" + capturePipelineGeneration.get());
+                    return;
+                }
+
+                newImageReader = createImageReader();
+                if (!isCapturePipelineGenerationValidLocked(expectedGeneration)) {
+                    blog("CAPT: rebuild aborted after reader create reason=" + reason
+                            + " gen=" + expectedGeneration
+                            + " currentGen=" + capturePipelineGeneration.get());
+                    return;
+                }
+
+                newVirtualDisplay = createVirtualDisplay(newImageReader);
+                if (!isCapturePipelineGenerationValidLocked(expectedGeneration)) {
+                    blog("CAPT: rebuild aborted after display create reason=" + reason
+                            + " gen=" + expectedGeneration
+                            + " currentGen=" + capturePipelineGeneration.get());
+                    return;
+                }
+
+                imageReader = newImageReader;
+                newImageReader = null;
+                virtualDisplay = newVirtualDisplay;
+                newVirtualDisplay = null;
+                synchronized (captureLock) {
+                    requestCleanFrame = false;
+                    hasNewFrame = false;
+                }
+                emptyRoundCount = 0;
+                imgCallbackCount = 0;
+                blog("CAPT: rebuild done gen=" + expectedGeneration);
             }
-            setupImageReader();
-            createVirtualDisplay();
-            synchronized (captureLock) {
-                requestCleanFrame = false;
-                hasNewFrame = false;
-            }
-            emptyRoundCount = 0;
-            imgCallbackCount = 0;
-            blog("CAPT: rebuild done");
         } catch (Throwable t) {
             Log.e(TAG, "Error rebuilding capture pipeline", t);
-            blog("CAPT: rebuild fail " + t.getClass().getSimpleName());
+            blog("CAPT: rebuild fail " + t.getClass().getSimpleName()
+                    + " gen=" + expectedGeneration);
         } finally {
+            releaseVirtualDisplayQuietly(newVirtualDisplay);
+            closeImageReaderQuietly(newImageReader);
             capturePipelineRebuildInFlight.set(false);
         }
     }

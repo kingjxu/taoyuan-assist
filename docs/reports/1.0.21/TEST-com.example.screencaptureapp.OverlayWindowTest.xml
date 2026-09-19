@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.example.screencaptureapp.OverlayWindowTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-09-19T02:27:32" hostname="n37-205-147" time="4.34">
+  <properties/>
+  <testcase name="missingPermissionRecordsErrorWithoutKeepingFakeWindow" classname="com.example.screencaptureapp.OverlayWindowTest" time="2.108"/>
+  <testcase name="failedAddViewCanRetryAndSuccessClearsError" classname="com.example.screencaptureapp.OverlayWindowTest" time="0.549"/>
+  <testcase name="waitingHasNoTimeoutAndOnlyValidResultStartsFiveSeconds" classname="com.example.screencaptureapp.OverlayWindowTest" time="0.075"/>
+  <testcase name="foregroundFailureImmediatelyShowsInAppDialog" classname="com.example.screencaptureapp.OverlayWindowTest" time="1.139"/>
+  <testcase name="backgroundFailureIsShownWhenAppReturnsAndAcknowledged" classname="com.example.screencaptureapp.OverlayWindowTest" time="0.237"/>
+  <testcase name="permissionPromptStaysInsideAppUntilSettingsChosen" classname="com.example.screencaptureapp.OverlayWindowTest" time="0.23"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[Intent = Intent { act=com.example.screencaptureapp.OVERLAY_STATUS_CHANGED pkg=com.example.screencaptureapp }; Matching wrappers: []
+Invalid ID 0x00000000.
+Intent = Intent { act=com.example.screencaptureapp.OVERLAY_STATUS_CHANGED pkg=com.example.screencaptureapp }; Matching wrappers: []
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Intent = Intent { act=com.example.screencaptureapp.OVERLAY_STATUS_CHANGED pkg=com.example.screencaptureapp }; Matching wrappers: [Wrapper[receiver=[com.example.screencaptureapp.MainActivity$1@2cef7c55], context=[android.app.ContextImpl@7e983fc0], intentFilter=[android.content.IntentFilter@6b9b09ab]]]
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Intent = Intent { act=com.example.screencaptureapp.OVERLAY_STATUS_CHANGED pkg=com.example.screencaptureapp }; Matching wrappers: [Wrapper[receiver=[com.example.screencaptureapp.MainActivity$1@76462d4a], context=[android.app.ContextImpl@1736920e], intentFilter=[android.content.IntentFilter@368755dd]]]
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+Invalid ID 0x00000000.
+]]></system-err>
+</testsuite>

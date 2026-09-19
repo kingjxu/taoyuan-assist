@@ -2,6 +2,7 @@ package com.example.screencaptureapp;
 
 import android.app.Activity;
 import android.content.ComponentName;
+import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
@@ -245,8 +246,15 @@ public class MainActivity extends AppCompatActivity {
             btnReactivate.setVisibility(View.GONE);
         });
 
-        btnWebsite.setOnClickListener(v ->
-                Toast.makeText(this, "访问官网功能开发中...", Toast.LENGTH_SHORT).show());
+        btnWebsite.setOnClickListener(v -> {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW,
+                        Uri.parse("http://www.ddbaby.site/tyzs/")));
+            } catch (ActivityNotFoundException | SecurityException e) {
+                Toast.makeText(this, "无法打开浏览器，请手动访问 http://www.ddbaby.site/tyzs/",
+                        Toast.LENGTH_LONG).show();
+            }
+        });
 
         btnAbout.setOnClickListener(v -> new AlertDialog.Builder(this)
                 .setTitle(DialogTextUtils.redBold("关于 桃园助手"))

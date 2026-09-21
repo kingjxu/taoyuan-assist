@@ -1,6 +1,6 @@
 ---
-version: "1.1"
-last_updated: "2026-09-18"
+version: "1.2"
+last_updated: "2026-09-21"
 ---
 # 架构
 MainActivity 展示本地会话额度，ApiService.getQuota 通过 GET /lyxz/gto_amount_info 获取 amount、expire_at、is_active；UserSessionManager 保存额度与授权状态。
@@ -16,3 +16,5 @@ FloatingWindowService 记录可捕获的初始化、前台服务启动、权限�
 悬浮窗位置使用 TOP | CENTER_HORIZONTAL，x=20px、y=50px；1.0.20 将顶部偏移从100px调为50px，沿用原像素单位和系统默认窗口布局处理。
 
 1.0.21 主界面“访问官网”通过 ACTION_VIEW 打开 http://www.ddbaby.site/tyzs/；没有可用浏览器或系统拒绝启动时提示手动访问。
+
+1.0.22 移除每次截图请求结束后的固定1秒等待。上传仍由单线程同步HTTP请求串行执行，帧队列容量保持1并只保留最新帧，因此不会产生并发上传或历史帧堆积；实际上传频率由单次请求耗时自然限制。

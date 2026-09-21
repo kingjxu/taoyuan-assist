@@ -43,7 +43,6 @@ public class ScreenCaptureService extends Service {
     private static final int CAPTURE_WAIT_SLICE_MS = 50;
     private static final int CAPTURE_RECOVERY_SLEEP_MS = 100;
     private static final int EMPTY_ROUNDS_BEFORE_REBUILD = 6;
-    private static final int UPLOAD_THROTTLE_MS = 1000;
 
     private MediaProjection mediaProjection;
     private VirtualDisplay virtualDisplay;
@@ -507,12 +506,6 @@ public class ScreenCaptureService extends Service {
                             updateFloatingWindow("上传失败: " + e.getMessage());
                         } finally {
                             recycleFrameBitmap(bitmap);
-                            try {
-                                Thread.sleep(UPLOAD_THROTTLE_MS);
-                            } catch (InterruptedException e) {
-                                blog("UPLOAD: post-send sleep interrupted");
-                                Thread.currentThread().interrupt();
-                            }
                         }
                     }
                     } catch (InterruptedException e)

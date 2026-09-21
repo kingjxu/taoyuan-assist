@@ -43,6 +43,7 @@ public class ScreenCaptureService extends Service {
     private static final int CAPTURE_WAIT_SLICE_MS = 50;
     private static final int CAPTURE_RECOVERY_SLEEP_MS = 100;
     private static final int EMPTY_ROUNDS_BEFORE_REBUILD = 6;
+    private static final int MIN_UPLOAD_INTERVAL_MS = 1000;
 
     private MediaProjection mediaProjection;
     private VirtualDisplay virtualDisplay;
@@ -506,6 +507,11 @@ public class ScreenCaptureService extends Service {
                             updateFloatingWindow("上传失败: " + e.getMessage());
                         } finally {
                             recycleFrameBitmap(bitmap);
+                            long waitMs = remainingUploadDelayMs(
+                                    tUp0, System.currentTimeMillis());
+                            if (waitMs > 0) {
+                                Thread.sleep(waitMs);
+                            }
                         }
                     }
                     } catch (InterruptedException e)
@@ -534,6 +540,11 @@ public class ScreenCaptureService extends Service {
         }, "NetworkUploadThread");
         uploadThread = worker;
         worker.start();
+    }
+
+    static long remainingUploadDelayMs(long requestStartMs, long nowMs) {
+        long elapsedMs = Math.max(0L, nowMs - requestStartMs);
+        return Math.max(0L, MIN_UPLOAD_INTERVAL_MS - elapsedMs);
     }
 
     private void updateFloatingWindow(String text) {

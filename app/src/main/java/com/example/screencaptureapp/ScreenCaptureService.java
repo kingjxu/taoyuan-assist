@@ -21,6 +21,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.WindowManager;
@@ -478,6 +479,7 @@ public class ScreenCaptureService extends Service {
                 {
                     try{
                     CaptureFrame frame = frameQueueRef.take();
+                    long requestStartElapsedMs = SystemClock.elapsedRealtime();
                     long tUp0 = System.currentTimeMillis();
 
                     if(frame != null && frame.bitmap != null)
@@ -508,7 +510,7 @@ public class ScreenCaptureService extends Service {
                         } finally {
                             recycleFrameBitmap(bitmap);
                             long waitMs = remainingUploadDelayMs(
-                                    tUp0, System.currentTimeMillis());
+                                    requestStartElapsedMs, SystemClock.elapsedRealtime());
                             if (waitMs > 0) {
                                 Thread.sleep(waitMs);
                             }
@@ -542,8 +544,8 @@ public class ScreenCaptureService extends Service {
         worker.start();
     }
 
-    static long remainingUploadDelayMs(long requestStartMs, long nowMs) {
-        long elapsedMs = Math.max(0L, nowMs - requestStartMs);
+    static long remainingUploadDelayMs(long requestStartElapsedMs, long nowElapsedMs) {
+        long elapsedMs = Math.max(0L, nowElapsedMs - requestStartElapsedMs);
         return Math.max(0L, MIN_UPLOAD_INTERVAL_MS - elapsedMs);
     }
 

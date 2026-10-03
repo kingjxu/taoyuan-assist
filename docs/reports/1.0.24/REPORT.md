@@ -30,3 +30,11 @@
 - APK SHA256：`a751ed1a2e60dd5e6c66c70a3ab76e3167982d223ce8034d6291a3315a346efc`。
 - 签名证书 SHA256：`82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与官网1.0.23一致，因此1.0.23可覆盖升级到1.0.24。
 - 没有连接Android/鸿蒙真机，不宣称已完成系统录屏授权、悬浮窗设置或端到端识别实测。
+
+## 官网部署
+
+- 2026-10-03 部署前官网 1.0.23 APK SHA256 为 `114715f03fea98c18da9b1b1b91d1179794dd43ffaf2f50c9fa1737c53d69992`；原 APK 和校验值已备份到 `/home/ubuntu/taoyuan-backups/20261003-204014-before-1.0.24`。
+- 候选 APK 先上传到下载目录的临时文件，校验 SHA256 后使用原子 `rename` 替换官网 APK；官网首页未修改。
+- 公网下载回验 HTTP 200，SHA256 为 `a751ed1a2e60dd5e6c66c70a3ab76e3167982d223ce8034d6291a3315a346efc`，与候选包一致。
+- 公网包回验为 `versionCode=17`、`versionName=1.0.24`，v2 签名通过，证书 SHA256 为 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`。
+- 公网包权限清单确认不包含 `READ_MEDIA_IMAGES`、`READ_EXTERNAL_STORAGE` 或 `WRITE_EXTERNAL_STORAGE`；`check_apk.py` 对公网包检查通过。

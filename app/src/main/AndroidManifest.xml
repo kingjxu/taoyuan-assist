@@ -9,12 +9,6 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!--uses-permission android:name="android.permission.RECORD_AUDIO" /-->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- 屏幕录制权限 -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-
     <!-- 如果目标SDK >= 34，还需要声明这个权限 -->
     <uses-permission android:name="android.permission.CAPTURE_VIDEO_OUTPUT"
         tools:ignore="ProtectedPermissions" />
@@ -34,7 +28,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ScreenCaptureApp"
         android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true"
         tools:targetApi="33"
         tools:ignore="UnusedAttribute">
         <!-- 登录界面为启动入口 -->

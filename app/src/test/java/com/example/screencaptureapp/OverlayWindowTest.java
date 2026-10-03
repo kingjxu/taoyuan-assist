@@ -35,8 +35,7 @@ public class OverlayWindowTest {
         // Robolectric does not automatically grant the app's own signature permission.
         shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(
                 "com.example.screencaptureapp.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
-                android.Manifest.permission.INTERNET, android.Manifest.permission.ACCESS_NETWORK_STATE,
-                android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                android.Manifest.permission.INTERNET, android.Manifest.permission.ACCESS_NETWORK_STATE);
         ReflectionHelpers.setStaticField(UserSessionManager.class, "instance", null);
     }
 

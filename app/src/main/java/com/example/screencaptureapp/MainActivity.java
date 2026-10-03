@@ -34,14 +34,10 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.Manifest;
 
-import com.example.screencaptureapp.utils.PermissionHelper;
-
 import com.google.gson.JsonObject;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 
 /**
@@ -52,7 +48,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE_SCREEN_CAPTURE = 1001;
     private static final int REQUEST_OVERLAY_PERMISSION = 1002;
-    private static final int REQUEST_PERMISSIONS = 1003;
     private static final int REQUEST_MEDIA_PROJECTION_PERMISSION = 1004;
 
     // ---- UI ----
@@ -108,7 +103,6 @@ public class MainActivity extends AppCompatActivity {
         }
         setContentView(R.layout.activity_main);
         initViews();
-        checkPermissions();
         loadSessionData();
         setupListeners();
         try {
@@ -213,24 +207,6 @@ public class MainActivity extends AppCompatActivity {
             tvExpireAt.setVisibility(View.VISIBLE);
         } else {
             tvExpireAt.setVisibility(View.GONE);
-        }
-    }
-
-    // ==================== 权限 ====================
-
-    private void checkPermissions() {
-        List<String> permissionList = new ArrayList<>();
-        permissionList.add(Manifest.permission.INTERNET);
-        permissionList.add(Manifest.permission.ACCESS_NETWORK_STATE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissionList.add(Manifest.permission.READ_MEDIA_IMAGES);
-        } else {
-            permissionList.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-            permissionList.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        }
-        String[] permissions = permissionList.toArray(new String[0]);
-        if (!PermissionHelper.hasPermissions(this, permissions)) {
-            ActivityCompat.requestPermissions(this, permissions, REQUEST_PERMISSIONS);
         }
     }
 
@@ -627,15 +603,7 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_PERMISSIONS) {
-            boolean allGranted = true;
-            for (int result : grantResults) {
-                if (result != PackageManager.PERMISSION_GRANTED) { allGranted = false; break; }
-            }
-            if (allGranted) {
-                Toast.makeText(this, "所有权限已获取", Toast.LENGTH_SHORT).show();
-            }
-        } else if (requestCode == REQUEST_MEDIA_PROJECTION_PERMISSION) {
+        if (requestCode == REQUEST_MEDIA_PROJECTION_PERMISSION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // 权限已授予 → 重新进入 enterAAPoker（会跳过权限检查，走实时校验）
                 //enterAAPoker();

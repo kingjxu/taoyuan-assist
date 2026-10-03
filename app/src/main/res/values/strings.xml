@@ -37,6 +37,6 @@
     <string name="btn_about">关于我们</string>
     <string name="btn_logout">退出登录</string>
     <string name="footer_copyright">© 2026 桃园助手</string>
-    <string name="app_version">v1.0.22</string>
+    <string name="app_version">v1.0.23</string>
     <string name="secure_access">SECURE ACCESS</string>
 </resources>

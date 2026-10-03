@@ -1,11 +1,13 @@
 ---
-version: "1.1"
-last_updated: "2026-09-18"
+version: "1.2"
+last_updated: "2026-10-03"
 ---
 # 构建与验证
 使用 JDK17、Gradle8.7、AGP8.6.0，compileSdk34/build-tools34.0.0；运行 :app:testDebugUnitTest :app:assembleDebug。
 构建产物 app/build/outputs/apk/debug/app-debug.apk，使用 apksigner verify 和 aapt dump badging 核对签名、包名及版本。
-本机 SDK 和可写 Gradle 缓存在 /tmp/taoyuan-android-sdk 和 /tmp/taoyuan-gradle。没有真机时不能声称已验证登录、悬浮窗权限和录屏全链路。
+本机 SDK 和可写 Gradle 缓存在 `/tmp/taoyuan-android-sdk` 和 `/tmp/taoyuan-gradle-ready`。没有真机时不能声称已验证登录、悬浮窗权限和录屏全链路。
+
+可升级 APK 必须显式使用长期保存的 Android 用户目录 `/data00/home/xujin.xj/.android` 构建，并在交付前核对签名证书 SHA256。禁止使用临时 `ANDROID_USER_HOME` 生成发布候选，否则临时 debug key 丢失后无法继续覆盖升级。
 
 `scripts/check_apk.py <build-tools目录> <APK>` 检查Gradle版本、页面app_version资源、APK内实际字符串、签名与动态广播签名权限声明；它不替代跨应用广播真机验证。
 

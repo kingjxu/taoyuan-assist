@@ -21,7 +21,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
-import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.WindowManager;
@@ -44,7 +43,9 @@ public class ScreenCaptureService extends Service {
     private static final int CAPTURE_WAIT_SLICE_MS = 50;
     private static final int CAPTURE_RECOVERY_SLEEP_MS = 100;
     private static final int EMPTY_ROUNDS_BEFORE_REBUILD = 6;
-    private static final int MIN_UPLOAD_INTERVAL_MS = 1000;
+    private static final int INITIAL_UPLOAD_FAILURE_BACKOFF_MS = 250;
+    private static final int MAX_CONSECUTIVE_UPLOAD_FAILURES = 4;
+    private static final int MAX_UPLOAD_FAILURE_BACKOFF_MS = 2000;
 
     private MediaProjection mediaProjection;
     private VirtualDisplay virtualDisplay;
@@ -474,12 +475,12 @@ public class ScreenCaptureService extends Service {
                 blog("UPLOAD: network manager missing");
                 return;
             }
+            int consecutiveUploadFailures = 0;
             try {
                 while(isRecording && !Thread.currentThread().isInterrupted())
                 {
                     try{
                     CaptureFrame frame = frameQueueRef.take();
-                    long requestStartElapsedMs = SystemClock.elapsedRealtime();
                     long tUp0 = System.currentTimeMillis();
 
                     if(frame != null && frame.bitmap != null)
@@ -490,6 +491,7 @@ public class ScreenCaptureService extends Service {
                         try {
                             blog("UPLOAD: now sending image...");
                             String response = uploadNetworkManager.uploadImage(bitmap,timestamp);
+                            consecutiveUploadFailures = 0;
                             long tUp1 = System.currentTimeMillis();
                             /*String preview = response != null && response.length() > 80
                                 ? response.substring(0, 80) + "..." : response;*/
@@ -507,13 +509,13 @@ public class ScreenCaptureService extends Service {
                             Log.e(TAG, "Error uploading image: " + e.getMessage());
                             blog("UPLOAD: FAIL " + e.getMessage());
                             updateFloatingWindow("上传失败: " + e.getMessage());
+                            consecutiveUploadFailures = Math.min(
+                                    consecutiveUploadFailures + 1,
+                                    MAX_CONSECUTIVE_UPLOAD_FAILURES
+                            );
+                            Thread.sleep(uploadFailureBackoffMs(consecutiveUploadFailures));
                         } finally {
                             recycleFrameBitmap(bitmap);
-                            long waitMs = remainingUploadDelayMs(
-                                    requestStartElapsedMs, SystemClock.elapsedRealtime());
-                            if (waitMs > 0) {
-                                Thread.sleep(waitMs);
-                            }
                         }
                     }
                     } catch (InterruptedException e)
@@ -544,9 +546,17 @@ public class ScreenCaptureService extends Service {
         worker.start();
     }
 
-    static long remainingUploadDelayMs(long requestStartElapsedMs, long nowElapsedMs) {
-        long elapsedMs = Math.max(0L, nowElapsedMs - requestStartElapsedMs);
-        return Math.max(0L, MIN_UPLOAD_INTERVAL_MS - elapsedMs);
+    static long uploadFailureBackoffMs(int consecutiveFailures) {
+        if (consecutiveFailures <= 0) {
+            return 0L;
+        }
+        long backoffMs = INITIAL_UPLOAD_FAILURE_BACKOFF_MS;
+        for (int failure = 1;
+             failure < consecutiveFailures && backoffMs < MAX_UPLOAD_FAILURE_BACKOFF_MS;
+             failure++) {
+            backoffMs = Math.min(backoffMs * 2L, MAX_UPLOAD_FAILURE_BACKOFF_MS);
+        }
+        return backoffMs;
     }
 
     private void updateFloatingWindow(String text) {

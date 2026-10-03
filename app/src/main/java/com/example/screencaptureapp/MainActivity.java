@@ -280,10 +280,6 @@ public class MainActivity extends AppCompatActivity {
     // ==================== 刷新额度 ====================
 
     private void refreshQuota() {
-        refreshQuota(true);
-    }
-
-    private void refreshQuota(boolean notifySuccess) {
         if (quotaRefreshInFlight || isFinishing() || isDestroyed()) return;
         quotaRefreshInFlight = true;
         btnRefreshQuota.setEnabled(false);
@@ -322,9 +318,6 @@ public class MainActivity extends AppCompatActivity {
                     updateLicenseActivationUI();
                     updateQuotaDisplay(session.getEffectiveQuota());
                     updateExpireDisplay(expireAt);
-                    if (notifySuccess) {
-                        Toast.makeText(MainActivity.this, "额度已刷新", Toast.LENGTH_SHORT).show();
-                    }
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
@@ -366,9 +359,6 @@ public class MainActivity extends AppCompatActivity {
                         session.setLicenseActivated(true);
                         session.setDeviceBound(true);
                         updateDeviceStatus();
-
-                        Toast.makeText(MainActivity.this,
-                                "授权码激活成功", Toast.LENGTH_SHORT).show();
 
                         // 激活成功后自动刷新额度并隐藏激活区域
                         //updateLicenseActivationUI();
@@ -537,7 +527,6 @@ public class MainActivity extends AppCompatActivity {
         stopService(new Intent(this, ScreenCaptureService.class));
         stopService(new Intent(this, FloatingWindowService.class));
         updateRecordingUI();
-        Toast.makeText(this, "录制已停止", Toast.LENGTH_SHORT).show();
     }
 
     private void launchAAPoker() {
@@ -545,7 +534,6 @@ public class MainActivity extends AppCompatActivity {
         if (launchIntent != null) {
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(launchIntent);
-            Toast.makeText(this, "AAPoker 已启动", Toast.LENGTH_SHORT).show();
         } else {
             try {
                 Intent marketIntent = new Intent(Intent.ACTION_VIEW,
@@ -589,12 +577,6 @@ public class MainActivity extends AppCompatActivity {
                 ScreenCaptureService.blog("[Main] onAR FAIL: rc=" + resultCode + " bound=" + isServiceBound);
                 Toast.makeText(this, "屏幕录制权限被拒绝", Toast.LENGTH_SHORT).show();
                 stopRecording();
-            }
-        } else if (requestCode == REQUEST_OVERLAY_PERMISSION) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (Settings.canDrawOverlays(this)) {
-                    Toast.makeText(this, "悬浮窗权限已获取", Toast.LENGTH_SHORT).show();
-                }
             }
         }
     }
@@ -706,7 +688,7 @@ public class MainActivity extends AppCompatActivity {
             verifyAuthorizationWhileRecording();
         } else {
             // Initial entry and returning from the background both refresh quota.
-            refreshQuota(false);
+            refreshQuota();
         }
     }
 

@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -66,7 +65,6 @@ public class LoginActivity extends AppCompatActivity {
                         if (response.data.has("expires_at")) {
                             session.setTokenExpiresAt(parseIsoTime(response.data.get("expires_at").getAsString()));
                         }
-                        //Toast.makeText(LoginActivity.this, "自动登录成功", Toast.LENGTH_SHORT).show();
                         startMainActivity();
                         finish();
                     } else {
@@ -167,7 +165,6 @@ public class LoginActivity extends AppCompatActivity {
                             session.setTokenExpiresAt(parseIsoTime(response.data.get("expires_at").getAsString()));
                         }
 
-                        Toast.makeText(LoginActivity.this, "登录成功", Toast.LENGTH_SHORT).show();
                         startMainActivity();
                         finish();
                     } else {

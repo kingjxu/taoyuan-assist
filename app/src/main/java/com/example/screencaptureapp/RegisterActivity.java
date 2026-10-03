@@ -8,7 +8,6 @@ import android.text.TextUtils;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -82,8 +81,6 @@ public class RegisterActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     if (response.isSuccess()) {
                         codeSent = true;
-                        Toast.makeText(RegisterActivity.this,
-                                "验证码已发送至您的邮箱", Toast.LENGTH_SHORT).show();
                         if (tvCodeHint != null) {
                             tvCodeHint.setText("验证码已发送至 " + email + "，5分钟内有效");
                             tvCodeHint.setTextColor(getColor(R.color.gto_success));
@@ -218,9 +215,6 @@ public class RegisterActivity extends AppCompatActivity {
                         if (loginResp.data != null && loginResp.data.has("expires_at")) {
                             session.setTokenExpiresAt(parseIsoTime(loginResp.data.get("expires_at").getAsString()));
                         }
-
-                        Toast.makeText(RegisterActivity.this,
-                                "注册成功，已自动登录", Toast.LENGTH_SHORT).show();
 
                         Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);

@@ -8,6 +8,7 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.util.Base64OutputStream;
 import android.util.Log;
@@ -38,6 +39,10 @@ public class NetworkManager {
     private static final String TAG = "NetworkManager";
     private static final String UPLOAD_URL = "http://ddbaby.site/lyxz/gto_decision";
     private static final int WRITE_TIMEOUT_SECONDS = 10;
+    private static final String TRACE_ID_HEADER = "X-GTO-Trace-ID";
+    private static final String CLIENT_STAGES_HEADER = "X-GTO-Client-Stages";
+    private static final String PREVIOUS_TRACE_HEADER = "X-GTO-Previous-Trace";
+    private static final String SERVER_TIMING_HEADER = "X-GTO-Server-Timing";
     private Context context;
     private String token;
     private String uuid;
@@ -60,38 +65,58 @@ public class NetworkManager {
                 .build();
     }
 
-    public String uploadImage(Bitmap bitmap, long timestamp) throws IOException {
-        long compressStartTime = System.currentTimeMillis();
+    public UploadResult uploadImage(
+            Bitmap bitmap,
+            long timestamp,
+            LatencyTraceStore.TraceRecord trace
+    ) throws IOException {
+        trace.compressStartMs = SystemClock.elapsedRealtime();
         reusableStream.reset();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 50, reusableStream);
-        long compressEndTime = System.currentTimeMillis();
+        trace.compressEndMs = SystemClock.elapsedRealtime();
         int jpegSize = reusableStream.getCount();
         ScreenCaptureService.blog("NET: compress " + jpegSize + "B "
-                + (compressEndTime - compressStartTime) + "ms");
+                + (trace.compressEndMs - trace.compressStartMs) + "ms trace=" + trace.traceId);
         ScreenCaptureService.blog("NET: sending streaming body jpeg=" + jpegSize + "B");
 
-        Request request = new Request.Builder()
+        trace.httpStartMs = SystemClock.elapsedRealtime();
+        Request.Builder requestBuilder = new Request.Builder()
                 .url(UPLOAD_URL)
-                .post(createUploadRequestBody(reusableStream.getBuffer(), jpegSize, timestamp))
+                .post(createUploadRequestBody(reusableStream.getBuffer(), jpegSize, timestamp, trace))
                 .addHeader("User-Agent", "ScreenCaptureApp/1.0")
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Authorization", "Bearer " + (token == null ? "" : token))
-                .build();
+                .addHeader(TRACE_ID_HEADER, trace.traceId)
+                .addHeader(CLIENT_STAGES_HEADER, trace.currentStagesHeader());
+        LatencyTraceStore.TraceRecord previousTrace = LatencyTraceStore.peekCompleted();
+        if (previousTrace != null) {
+            requestBuilder.addHeader(PREVIOUS_TRACE_HEADER, previousTrace.completedHeader());
+        }
+        Request request = requestBuilder.build();
         Call call = client.newCall(request);
         if (!inFlightUploadCall.compareAndSet(null, call)) {
             throw new IOException("Upload request already in flight");
         }
 
         try (Response response = call.execute()) {
-            long requestEndTime = System.currentTimeMillis();
+            if (previousTrace != null) {
+                LatencyTraceStore.acknowledgeCompleted(previousTrace.traceId);
+            }
+            String responseTraceId = response.header(TRACE_ID_HEADER);
+            if (responseTraceId != null && !trace.traceId.equals(responseTraceId)) {
+                throw new IOException("Trace id mismatch");
+            }
+            trace.applyServerTiming(response.header(SERVER_TIMING_HEADER));
             if (response.isSuccessful() && response.body() != null) {
                 String responseBody = response.body().string();
-                ScreenCaptureService.blog("NET: OK " + (requestEndTime - compressEndTime)
-                        + "ms resp=" + responseBody.length() + "B");
-                return responseBody;
+                trace.responseEndMs = SystemClock.elapsedRealtime();
+                ScreenCaptureService.blog("NET: OK " + (trace.responseEndMs - trace.httpStartMs)
+                        + "ms resp=" + responseBody.length() + "B trace=" + trace.traceId);
+                return new UploadResult(responseBody, trace.traceId);
             }
+            trace.responseEndMs = SystemClock.elapsedRealtime();
             ScreenCaptureService.blog("NET: FAIL " + response.code() + " "
-                    + (requestEndTime - compressEndTime) + "ms");
+                    + (trace.responseEndMs - trace.httpStartMs) + "ms trace=" + trace.traceId);
             throw new IOException("Server error: " + response.code());
         } finally {
             inFlightUploadCall.compareAndSet(call, null);
@@ -109,7 +134,8 @@ public class NetworkManager {
     private RequestBody createUploadRequestBody(
             final byte[] jpegBuffer,
             final int jpegLength,
-            final long timestamp
+            final long timestamp,
+            final LatencyTraceStore.TraceRecord trace
     ) {
         return new RequestBody() {
             @Override
@@ -119,6 +145,7 @@ public class NetworkManager {
 
             @Override
             public void writeTo(BufferedSink sink) throws IOException {
+                trace.requestBodyStartMs = SystemClock.elapsedRealtime();
                 sink.writeUtf8("{\"images\":[\"");
                 Base64OutputStream base64Stream = new Base64OutputStream(
                         new NonClosingOutputStream(sink.outputStream()),
@@ -134,8 +161,19 @@ public class NetworkManager {
                 sink.writeUtf8(",\"uuid\":\"");
                 writeEscapedJsonString(sink, uuid);
                 sink.writeUtf8("\"}");
+                trace.requestBodyEndMs = SystemClock.elapsedRealtime();
             }
         };
+    }
+
+    public static final class UploadResult {
+        public final String responseBody;
+        public final String traceId;
+
+        UploadResult(String responseBody, String traceId) {
+            this.responseBody = responseBody;
+            this.traceId = traceId;
+        }
     }
 
     private void writeEscapedJsonString(BufferedSink sink, String value) throws IOException {

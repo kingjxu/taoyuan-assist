@@ -31,6 +31,7 @@ public class FloatingWindowService extends Service {
     private static final String CHANNEL_ID = "floating_window_channel";
     private static final long CLEAR_TEXT_DELAY_MS = 5000;
     public static final String EXTRA_TEXT = "text";
+    public static final String EXTRA_TRACE_ID = "trace_id";
     private static final int MAX_DISPLAY_CHARS = 120;
     private static final int NOTIFICATION_ID = 1002;
     private static final String RESULT_PREFIX = "__RESULT__:";
@@ -56,7 +57,10 @@ public class FloatingWindowService extends Service {
             if (FloatingWindowService.ACTION_UPDATE_TEXT.equals(intent.getAction())) {
                 String stringExtra = intent.getStringExtra(FloatingWindowService.EXTRA_TEXT);
                 if (stringExtra != null) {
-                    FloatingWindowService.this.updateFeedbackText(stringExtra);
+                    FloatingWindowService.this.updateFeedbackText(
+                            stringExtra,
+                            intent.getStringExtra(FloatingWindowService.EXTRA_TRACE_ID)
+                    );
                     return;
                 }
                 return;
@@ -156,15 +160,21 @@ public class FloatingWindowService extends Service {
     }
 
     public void updateFeedbackText(String str) {
+        updateFeedbackText(str, null);
+    }
+
+    private void updateFeedbackText(String str, String traceId) {
         if (str == null || str.isEmpty()) {
             return;
         }
         String strResolveDisplayText = resolveDisplayText(str);
         if (strResolveDisplayText == null || strResolveDisplayText.isEmpty()) {
             ScreenCaptureService.blog("FLOAT: display text empty, skip");
+            LatencyTraceStore.discard(traceId);
             return;
         }
         if (!createFloatingWindow()) {
+            LatencyTraceStore.discard(traceId);
             stopSelf();
             return;
         }
@@ -174,7 +184,7 @@ public class FloatingWindowService extends Service {
         TextView textView = this.feedbackText;
         if (textView != null) {
             textView.setText(strResolveDisplayText);
-            ScreenCaptureService.blog("FLOAT: displayed");
+            ScreenCaptureService.blog("FLOAT: displayed trace=" + traceId);
         }
         View view = this.floatingView;
         if (view != null && view.getVisibility() != 0) {
@@ -182,6 +192,9 @@ public class FloatingWindowService extends Service {
         }
         this.handler.removeCallbacks(this.clearTextRunnable);
         this.handler.postDelayed(this.clearTextRunnable, CLEAR_TEXT_DELAY_MS);
+        if (traceId != null && this.floatingView != null) {
+            this.floatingView.postOnAnimation(() -> LatencyTraceStore.markDisplayed(traceId));
+        }
     }
 
     static String resolveDisplayText(String str) {

@@ -21,6 +21,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.WindowManager;
@@ -70,6 +71,7 @@ public class ScreenCaptureService extends Service {
     private int cachedPixelStride;
     private int cachedRowStride;
     private long latestFrameTimestamp;
+    private long latestFrameElapsedRealtimeMs;
     private volatile boolean hasNewFrame;
     private ByteBuffer reusablePixelBuffer;
     private Bitmap reusablePaddedBitmap;
@@ -100,10 +102,16 @@ public class ScreenCaptureService extends Service {
     public static class CaptureFrame {
         public final Bitmap bitmap;
         public final long captureTimeMs;
+        public final LatencyTraceStore.TraceRecord latencyTrace;
 
-        public CaptureFrame(Bitmap bitmap, long captureTimeMs) {
+        public CaptureFrame(
+                Bitmap bitmap,
+                long captureTimeMs,
+                LatencyTraceStore.TraceRecord latencyTrace
+        ) {
             this.bitmap = bitmap;
             this.captureTimeMs = captureTimeMs;
+            this.latencyTrace = latencyTrace;
         }
     }
 
@@ -244,6 +252,7 @@ public class ScreenCaptureService extends Service {
 
                         boolean shouldConvert = false;
                         long timestamp = 0;
+                        long captureElapsedRealtimeMs = 0;
                         int pStride = 0, rStride = 0;
 
                         synchronized (captureLock) {
@@ -251,6 +260,7 @@ public class ScreenCaptureService extends Service {
                             if (hasNewFrame && pixelDataBuffer != null) {
                                 shouldConvert = true;
                                 timestamp = latestFrameTimestamp;
+                                captureElapsedRealtimeMs = latestFrameElapsedRealtimeMs;
                                 pStride = cachedPixelStride;
                                 rStride = cachedRowStride;
                             }
@@ -262,7 +272,12 @@ public class ScreenCaptureService extends Service {
                             Bitmap bitmap = buildBitmapFromBuffer(pixelDataBuffer, pStride, rStride);
                             long t3 = System.currentTimeMillis();
                             if (bitmap != null) {
-                                CaptureFrame newFrame = new CaptureFrame(bitmap, timestamp);
+                                LatencyTraceStore.TraceRecord trace = LatencyTraceStore.start(
+                                        timestamp,
+                                        captureElapsedRealtimeMs
+                                );
+                                trace.readyMs = SystemClock.elapsedRealtime();
+                                CaptureFrame newFrame = new CaptureFrame(bitmap, timestamp, trace);
                                 enqueueLatestFrame(frameQueueRef, newFrame);
                                 blog("CAPT: frame wait=" + waitCount
                                         + " build=" + (t3-t2) + "ms total=" + (t3-t0) + "ms q=" + frameQueueRef.size());
@@ -349,6 +364,7 @@ public class ScreenCaptureService extends Service {
                                         cachedPixelStride = planes[0].getPixelStride();
                                         cachedRowStride = planes[0].getRowStride();
                                         latestFrameTimestamp = System.currentTimeMillis();
+                                        latestFrameElapsedRealtimeMs = SystemClock.elapsedRealtime();
                                         lastAcceptedFrameTimeMs = latestFrameTimestamp;
                                         hasNewFrame = true;
                                         imgCallbackCount++;
@@ -487,10 +503,13 @@ public class ScreenCaptureService extends Service {
                     {
                         Bitmap bitmap = frame.bitmap;
                         long timestamp = frame.captureTimeMs;
+                        LatencyTraceStore.TraceRecord trace = frame.latencyTrace;
+                        trace.dequeueMs = SystemClock.elapsedRealtime();
 
                         try {
-                            blog("UPLOAD: now sending image...");
-                            String response = uploadNetworkManager.uploadImage(bitmap,timestamp);
+                            blog("UPLOAD: now sending image trace=" + trace.traceId);
+                            NetworkManager.UploadResult result = uploadNetworkManager.uploadImage(
+                                    bitmap, timestamp, trace);
                             consecutiveUploadFailures = 0;
                             long tUp1 = System.currentTimeMillis();
                             /*String preview = response != null && response.length() > 80
@@ -500,14 +519,16 @@ public class ScreenCaptureService extends Service {
                             if (timestamp < latestDisplayedFrameTimeMs) {
                                 blog("UPLOAD: stale response dropped frameTs=" + timestamp
                                         + " latestDisplayed=" + latestDisplayedFrameTimeMs);
+                                LatencyTraceStore.discard(trace);
                             } else {
                                 latestDisplayedFrameTimeMs = timestamp;
-                                updateFloatingWindowWithResultPayload(response);
+                                updateFloatingWindowWithResultPayload(result.responseBody, result.traceId);
                             }
                         } catch (Exception e)
                         {
                             Log.e(TAG, "Error uploading image: " + e.getMessage());
                             blog("UPLOAD: FAIL " + e.getMessage());
+                            LatencyTraceStore.discard(frame.latencyTrace);
                             updateFloatingWindow("上传失败: " + e.getMessage());
                             consecutiveUploadFailures = Math.min(
                                     consecutiveUploadFailures + 1,
@@ -560,6 +581,10 @@ public class ScreenCaptureService extends Service {
     }
 
     private void updateFloatingWindow(String text) {
+        updateFloatingWindow(text, null);
+    }
+
+    private void updateFloatingWindow(String text, String traceId) {
         if (text != null && text.length() > 100) {
             blog("FLOAT: " + text.substring(0, 100) + "...");
         } else {
@@ -568,11 +593,14 @@ public class ScreenCaptureService extends Service {
         Intent intent = new Intent(FloatingWindowService.ACTION_UPDATE_TEXT);
         intent.setPackage(getPackageName());
         intent.putExtra(FloatingWindowService.EXTRA_TEXT, text);
+        if (traceId != null) {
+            intent.putExtra(FloatingWindowService.EXTRA_TRACE_ID, traceId);
+        }
         sendBroadcast(intent);
     }
 
-    private void updateFloatingWindowWithResultPayload(String payload) {
-        updateFloatingWindow("__RESULT__:" + payload);
+    private void updateFloatingWindowWithResultPayload(String payload, String traceId) {
+        updateFloatingWindow("__RESULT__:" + payload, traceId);
     }
 
     public void stopRecording() {
@@ -661,6 +689,7 @@ public class ScreenCaptureService extends Service {
                 while (!queueToClear.isEmpty()) {
                     CaptureFrame f = queueToClear.poll();
                     if (f != null) {
+                        LatencyTraceStore.discard(f.latencyTrace);
                         recycleFrameBitmap(f.bitmap);
                     }
                 }
@@ -693,6 +722,7 @@ public class ScreenCaptureService extends Service {
             releaseReusableBitmaps();
             emptyRoundCount = 0;
             lastAcceptedFrameTimeMs = 0L;
+            latestFrameElapsedRealtimeMs = 0L;
             latestEnqueuedFrameTimeMs = 0L;
             latestDisplayedFrameTimeMs = 0L;
             capturePipelineRebuildInFlight.set(false);
@@ -703,13 +733,17 @@ public class ScreenCaptureService extends Service {
 
     private void enqueueLatestFrame(LinkedBlockingQueue<CaptureFrame> frameQueueRef, CaptureFrame newFrame) {
         latestEnqueuedFrameTimeMs = newFrame.captureTimeMs;
+        newFrame.latencyTrace.enqueueMs = SystemClock.elapsedRealtime();
         while (!frameQueueRef.isEmpty()) {
             CaptureFrame oldFrame = frameQueueRef.poll();
             if (oldFrame != null) {
+                newFrame.latencyTrace.inheritQueueBacklog(oldFrame.latencyTrace);
+                LatencyTraceStore.discard(oldFrame.latencyTrace);
                 recycleFrameBitmap(oldFrame.bitmap);
             }
         }
         if (!frameQueueRef.offer(newFrame)) {
+            LatencyTraceStore.discard(newFrame.latencyTrace);
             recycleFrameBitmap(newFrame.bitmap);
             blog("CAPT: queue full, dropped frame");
         }

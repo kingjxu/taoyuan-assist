@@ -1,6 +1,6 @@
 ---
-version: "1.5"
-last_updated: "2026-10-03"
+version: "1.6"
+last_updated: "2026-10-04"
 ---
 # 架构
 MainActivity 展示本地会话额度，ApiService.getQuota 通过 GET /lyxz/gto_amount_info 获取 amount、expire_at、is_active；UserSessionManager 保存额度与授权状态。
@@ -22,3 +22,5 @@ FloatingWindowService 记录可捕获的初始化、前台服务启动、权限�
 1.0.24 移除 `READ_MEDIA_IMAGES`、`READ_EXTERNAL_STORAGE`、`WRITE_EXTERNAL_STORAGE` 和 legacy external storage 配置，主界面不再申请照片/存储权限。识别链路继续通过 MediaProjection 获取屏幕帧并直接编码上传，不读取或写入公共相册；系统录屏授权和悬浮窗设置流程保持不变。
 
 1.0.25 精简成功和状态型 Toast：登录、验证码发送、注册自动登录、额度刷新、授权码激活、录制停止、AAPoker 启动和悬浮窗授权成功不再额外弹出短提示，由界面状态或页面跳转反馈结果。保留浏览器打开失败、AAPoker 缺失、录屏开始、录屏授权拒绝和缺少媒体投影授权五个需要用户感知或处理的 Toast。
+
+1.0.26 为每个上传帧生成不含身份信息的 trace id，并使用 `elapsedRealtime` 记录采集、Bitmap 成帧、容量1最新帧队列、被替换帧数、JPEG、请求体写入、HTTP、收到响应和悬浮窗下一帧展示。服务端通过响应头返回 bind、授权、识别、请求准备、决策和总耗时。展示完成的追踪随下一次正常截图请求回传服务端，不新建并发上传；最后一次展示若没有后续请求，只保留本机 `TRACE_COMPLETE` 日志。追踪失败或无效不改变原业务响应和队列语义。

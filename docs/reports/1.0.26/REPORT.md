@@ -24,3 +24,10 @@
 ## 验证边界
 
 当前没有连接 Android/鸿蒙真机，因此尚未生成真实用户从采集到悬浮窗展示的完整 trace。代码与 APK 静态验证通过不代表已经确认 3 秒耗时的具体归因；发布后需由 1.0.26 产生一轮真实请求，再根据同一 trace id 的各阶段数据下结论。
+
+## 官网部署
+
+- 2026-10-04 部署前官网 1.0.25 APK SHA256 为 `b5438355ab18f3a8f7d83ffae3becb39d1d75dc6dacedd86c546060d7c6720aa`；原包和校验值备份在 `/home/ubuntu/taoyuan-backups/20261004-185346-before-1.0.26`。
+- 候选包上传到下载目录的临时文件，核对 SHA256 后通过原子 `rename` 替换；官网首页未修改。
+- 公网下载回验 HTTP 200、`Content-Length=6905008`，SHA256 为 `cd7a53b0a6d9f5242eefbe9b0ccfb438eb99b3ccaad3e857fb30e352f45c593f`，与候选逐字节一致。
+- 公网包回验为 versionCode=19、versionName=1.0.26，v2 签名通过，证书 SHA256 为 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与 1.0.25 相同，可覆盖升级。

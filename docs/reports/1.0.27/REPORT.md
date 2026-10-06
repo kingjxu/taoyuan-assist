@@ -22,4 +22,7 @@
 
 ## 部署
 
-待代码复审通过后补充官网备份、原子替换和公网 APK 回验记录。
+- 2026-10-06 部署前官网 1.0.26 APK SHA256 为 `cd7a53b0a6d9f5242eefbe9b0ccfb438eb99b3ccaad3e857fb30e352f45c593f`；原包和校验值备份在 `/home/ubuntu/taoyuan-backups/20261006-211304-before-1.0.27`。
+- 候选包上传到下载目录临时文件，核对 SHA256 后通过同目录原子 `rename` 替换；官网首页未修改。
+- 公网 `http://www.ddbaby.site/tyzs/api/download` 回验 HTTP 200、`Content-Length=6913436`，SHA256 为 `f5b80700112852b096a65004c38941e53d461975851b23f706d5c37538afefc4`，与候选逐字节一致。
+- 公网包为 versionCode=20、versionName=1.0.27，`check_apk.py` 通过，v2 签名有效；证书 SHA256 为 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与 1.0.26 相同，可覆盖升级。

@@ -1,10 +1,10 @@
 ---
-version: "1.0"
-last_updated: "2026-09-18"
+version: "1.1"
+last_updated: "2026-10-06"
 ---
 # 桃园助手项目上下文
 ## Context Version
-1.0，按当前额度刷新和反馈展示任务最小初始化。
+1.1，补充决策机会级首屏时延追踪。
 ## Task Router
 - 主界面/反馈链路：architecture.md、business-glossary.md
 - 构建与验证：testing-rules.md

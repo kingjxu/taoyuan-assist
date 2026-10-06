@@ -86,6 +86,7 @@ public class ScreenCaptureService extends Service {
     private volatile long latestDisplayedFrameTimeMs;
     private final AtomicBoolean capturePipelineRebuildInFlight = new AtomicBoolean(false);
     private final AtomicInteger capturePipelineGeneration = new AtomicInteger(0);
+    private final HeroDecisionCycleTracker heroDecisionCycleTracker = new HeroDecisionCycleTracker();
     private static final StringBuilder logBuf = new StringBuilder();
 
     public static void blog(String msg) {
@@ -222,6 +223,7 @@ public class ScreenCaptureService extends Service {
         frameQueue = newFrameQueue;
         emptyRoundCount = 0;
         lastAcceptedFrameTimeMs = 0L;
+        heroDecisionCycleTracker.reset();
         capturePipelineRebuildInFlight.set(false);
         startUploadConsumerThread(newFrameQueue);
         startCaptureControlThread(newFrameQueue);
@@ -272,9 +274,15 @@ public class ScreenCaptureService extends Service {
                             Bitmap bitmap = buildBitmapFromBuffer(pixelDataBuffer, pStride, rStride);
                             long t3 = System.currentTimeMillis();
                             if (bitmap != null) {
+                                HeroDecisionCycleTracker.Observation cycle =
+                                        heroDecisionCycleTracker.observe(
+                                                HeroTurnDetector.isHeroTurn(bitmap),
+                                                captureElapsedRealtimeMs
+                                        );
                                 LatencyTraceStore.TraceRecord trace = LatencyTraceStore.start(
                                         timestamp,
-                                        captureElapsedRealtimeMs
+                                        captureElapsedRealtimeMs,
+                                        cycle
                                 );
                                 trace.readyMs = SystemClock.elapsedRealtime();
                                 CaptureFrame newFrame = new CaptureFrame(bitmap, timestamp, trace);
@@ -725,6 +733,7 @@ public class ScreenCaptureService extends Service {
             latestFrameElapsedRealtimeMs = 0L;
             latestEnqueuedFrameTimeMs = 0L;
             latestDisplayedFrameTimeMs = 0L;
+            heroDecisionCycleTracker.reset();
             capturePipelineRebuildInFlight.set(false);
             isStopping.set(false);
             blog("STOP: done");

@@ -3,6 +3,8 @@ package com.example.screencaptureapp;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -58,5 +60,43 @@ public class LatencyTraceStoreTest {
 
         assertEquals(80L, replacement.pendingSinceMs);
         assertEquals(4L, replacement.supersededFrames);
+    }
+
+    @Test
+    public void serializesDecisionCycleInVersionTwoHeaders() {
+        HeroDecisionCycleTracker.Observation cycle =
+                new HeroDecisionCycleTracker.Observation("cycle-1", 80L, true);
+        LatencyTraceStore.TraceRecord trace =
+                new LatencyTraceStore.TraceRecord("trace-1", 100L, cycle);
+        trace.pendingSinceMs = 70L;
+        trace.readyMs = 112L;
+        trace.enqueueMs = 115L;
+        trace.dequeueMs = 140L;
+        trace.supersededFrames = 2L;
+        trace.compressStartMs = 141L;
+        trace.compressEndMs = 151L;
+        trace.httpStartMs = 153L;
+        trace.requestBodyStartMs = 154L;
+        trace.requestBodyEndMs = 160L;
+        trace.responseEndMs = 300L;
+        trace.displayEndMs = 306L;
+        trace.firstDisplayForCycle = true;
+        trace.applyServerTiming("v1,2,8,120,10,45,166");
+
+        assertEquals(
+                "v2,cycle-1,80,1,100,112,115,70,140,2,141,151,153",
+                trace.currentStagesHeader()
+        );
+        assertEquals(
+                "v2,trace-1,cycle-1,80,1,100,112,115,70,140,2,141,151,154,160,153,300,306,2,8,120,10,45,166",
+                trace.completedHeader()
+        );
+    }
+
+    @Test
+    public void onlyFirstDisplayOfDecisionCycleIsPrimary() {
+        String cycleId = "cycle-dedup-" + System.nanoTime();
+        assertTrue(LatencyTraceStore.markFirstDisplay(cycleId));
+        assertFalse(LatencyTraceStore.markFirstDisplay(cycleId));
     }
 }

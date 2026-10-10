@@ -9,10 +9,10 @@
 
 ## 验证
 
-- Robolectric单测28/28通过。新增覆盖设置入口、预览数值与实际sp同步、持久化边界，以及运行中悬浮窗即时刷新。
+- Robolectric单测29/29通过。新增覆盖设置入口、预览数值与实际sp同步、持久化边界、运行中悬浮窗即时刷新，以及设置弹窗随Activity暂停/销毁清理并可在页面重建后重新打开。
 - 使用JDK17、Gradle8.7执行 `:app:clean :app:testDebugUnitTest :app:assembleDebug`，39个构建任务全部成功。
 - `scripts/check_apk.py`通过；APK内版本为1.0.30/code23，APK Signature Scheme v2有效。
-- 候选APK为6,861,871 bytes，SHA256 `f7840a1e8b2566536ea8f717d0b5403466b869522606df34fdcac8081958ca7e`；证书SHA256 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与官网1.0.29一致，可覆盖升级。
+- 候选APK为6,861,935 bytes，SHA256 `0576702ce6c0597ba7cfe3691b202f8484d0a7c0fca967e8a63c8349bb4477c3`；证书SHA256 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与官网1.0.29一致，可覆盖升级。
 - `git diff --check`通过。
 
 ## 边界

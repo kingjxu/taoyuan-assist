@@ -297,6 +297,14 @@ public class MainActivity extends AppCompatActivity {
         preview.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp);
     }
 
+    private void dismissSettingsDialog() {
+        AlertDialog dialog = settingsDialog;
+        settingsDialog = null;
+        if (dialog != null && dialog.isShowing()) {
+            dialog.dismiss();
+        }
+    }
+
     // ==================== 退出登录 ====================
 
     private void doLogout() {
@@ -694,6 +702,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         activityResumed = false;
         if (overlayDialog != null) overlayDialog.dismiss();
+        dismissSettingsDialog();
         super.onPause();
     }
 
@@ -801,9 +810,10 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
+        dismissSettingsDialog();
         if (overlayReceiverRegistered) unregisterReceiver(overlayReceiver);
         if (overlayDialog != null) overlayDialog.dismiss();
         if (isServiceBound) unbindService(serviceConnection);
+        super.onDestroy();
     }
 }

@@ -221,4 +221,29 @@ public class OverlayWindowTest {
         assertEquals(OverlayTextSettings.MIN_FONT_SIZE_SP,
                 OverlayTextSettings.getFontSizeSp(RuntimeEnvironment.getApplication()));
     }
+
+    @Test public void settingsDialogFollowsActivityLifecycleAndCanReopenAfterRecreation() {
+        MainActivity activity = mainScreen();
+        Button settings = activity.findViewById(R.id.btn_settings);
+        settings.performClick();
+        AlertDialog pausedDialog = ReflectionHelpers.getField(activity, "settingsDialog");
+        assertTrue(pausedDialog.isShowing());
+
+        activity.onPause();
+        assertFalse(pausedDialog.isShowing());
+        assertNull(ReflectionHelpers.getField(activity, "settingsDialog"));
+
+        settings.performClick();
+        AlertDialog destroyedDialog = ReflectionHelpers.getField(activity, "settingsDialog");
+        assertTrue(destroyedDialog.isShowing());
+        activity.onDestroy();
+        assertFalse(destroyedDialog.isShowing());
+        assertNull(ReflectionHelpers.getField(activity, "settingsDialog"));
+        activityController = null;
+
+        MainActivity recreated = mainScreen();
+        recreated.findViewById(R.id.btn_settings).performClick();
+        AlertDialog recreatedDialog = ReflectionHelpers.getField(recreated, "settingsDialog");
+        assertTrue(recreatedDialog.isShowing());
+    }
 }

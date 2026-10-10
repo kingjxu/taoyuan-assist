@@ -22,7 +22,7 @@
 
 ## 发布
 
-- 客户端业务提交 `95842d6`、生命周期修复提交 `eaad99e` 经 CR LGTM 后发布。官网旧1.0.29已备份到 `/home/ubuntu/taoyuan-backups/20261010-213835-before-1.0.30`；候选上传后先核对大小和SHA，再在下载目录原子替换。
+- 客户端业务提交 `95842d6`、生命周期修复提交 `eaad99e` 经 CR LGTM 后发布；发布事实记录提交为 `97711f6`，不改变APK内容。官网旧1.0.29已备份到 `/home/ubuntu/taoyuan-backups/20261010-213835-before-1.0.30`；候选上传后先核对大小和SHA，再在下载目录原子替换。
 - 公网 `https://www.ddbaby.site/tyzs/api/download` 返回HTTP 200、`Content-Length=6861935`；重新下载的APK SHA256为 `0576702ce6c0597ba7cfe3691b202f8484d0a7c0fca967e8a63c8349bb4477c3`，与候选一致。
 - 公网APK复验为 `versionName=1.0.30`、`versionCode=23`，`scripts/check_apk.py`通过，APK Signature Scheme v2有效；证书SHA256为 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与官网旧版一致，可覆盖升级。
 - 公网回验只证明资产、版本和签名一致；当前仍无Android/鸿蒙真机，不能据此声明厂商悬浮窗的字号换行、状态栏或手势导航布局已验证。

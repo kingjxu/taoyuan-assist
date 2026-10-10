@@ -21,7 +21,7 @@
 
 ## 部署
 
-- 提交 `847ff00` 经 CR LGTM 后发布。官网旧APK与旧问题页备份在 `/home/ubuntu/taoyuan-backups/20261010-210905-before-1.0.29`，候选校验后在原目录原子替换。
+- 客户端业务提交 `847ff00` 经 CR LGTM 后发布；只记录发布事实的提交为 `5266dc1`，不改变APK内容。官网旧APK与旧问题页备份在 `/home/ubuntu/taoyuan-backups/20261010-210905-before-1.0.29`，候选校验后在原目录原子替换。
 - 公网 `https://www.ddbaby.site/tyzs/api/download` 返回HTTP 200、`Content-Length=6858151`；重新下载的APK SHA256为 `26406916cf8de1815469b4f8388b909c5988dc2e8d2dcbece5cbe32e282f3b57`，与候选一致。
 - 公网APK复验为 `versionName=1.0.29`、`versionCode=22`，`scripts/check_apk.py`通过，APK Signature Scheme v2有效；证书SHA256为 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与1.0.27一致。
-- 本轮仍无Android/鸿蒙真机，线上验收证明的是公网资产、版本和签名一致性；实际拖拽手势、状态栏和手势导航边界仍需真机观察。
+- 本轮仍无Android/鸿蒙真机，线上验收只证明业务提交 `847ff00` 构建的公网资产、版本和签名一致；没有把公网回验视为拖拽已通过真机验证，实际拖拽手势、状态栏和手势导航边界仍需真机观察。

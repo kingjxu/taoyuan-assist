@@ -1,6 +1,6 @@
 ---
-version: "1.8"
-last_updated: "2026-10-10"
+version: "1.7"
+last_updated: "2026-10-06"
 ---
 # 架构
 MainActivity 展示本地会话额度，ApiService.getQuota 通过 GET /lyxz/gto_amount_info 获取 amount、expire_at、is_active；UserSessionManager 保存额度与授权状态。
@@ -26,5 +26,3 @@ FloatingWindowService 记录可捕获的初始化、前台服务启动、权限�
 1.0.26 为每个上传帧生成不含身份信息的 trace id，并使用 `elapsedRealtime` 记录采集、Bitmap 成帧、容量1最新帧队列、被替换帧数、JPEG、请求体写入、HTTP、收到响应和悬浮窗下一帧展示。服务端通过响应头返回 bind、授权、识别、请求准备、决策和总耗时。展示完成的追踪随下一次正常截图请求回传服务端，不新建并发上传；最后一次展示若没有后续请求，只保留本机 `TRACE_COMPLETE` 日志。追踪失败或无效不改变原业务响应和队列语义。
 
 1.0.27 在每张已生成 Bitmap 上用 polerv2 左侧红色 fold ROI 与右侧操作按钮 ROI 做轻量 HSV 等价颜色门控；检测仅用于时延追踪，不控制截图或上传。连续可操作帧共用随机 `decision_cycle_id`，连续两张非 Hero 帧结束 cycle。服务端只把同一 cycle 的首次实际悬浮窗展示计入 `client_complete`，后续展示标记为 repeat；decided、其他玩家阶段和重复 Hero 不进入首次结果指标。旧 v1 trace 保持兼容。
-
-1.0.28 将截图决策请求切换为 HTTPS，并读取合法响应的 `X-GTO-Decision-Action` 与 `X-GTO-Can-Check`。只有服务端同时确认原始动作是 `fold`、Hero 当前可免费 check，且响应 JSON 顶层 `Result` 恰为“弃牌”时，客户端才把悬浮窗展示改为“过牌”并记录 `DECISION_FALLBACK`；响应体、网络记录和服务端决策日志不改写。头缺失、冲突、响应非法或 Hero 面对下注时保持原结果。

@@ -37,12 +37,14 @@ public class NetworkManager {
     private static final int MAX_FILE_COUNT = 50;
     private static final int READ_TIMEOUT_SECONDS = 12;
     private static final String TAG = "NetworkManager";
-    private static final String UPLOAD_URL = "http://ddbaby.site/lyxz/gto_decision";
+    private static final String UPLOAD_URL = "https://ddbaby.site/lyxz/gto_decision";
     private static final int WRITE_TIMEOUT_SECONDS = 10;
     private static final String TRACE_ID_HEADER = "X-GTO-Trace-ID";
     private static final String CLIENT_STAGES_HEADER = "X-GTO-Client-Stages";
     private static final String PREVIOUS_TRACE_HEADER = "X-GTO-Previous-Trace";
     private static final String SERVER_TIMING_HEADER = "X-GTO-Server-Timing";
+    private static final String DECISION_ACTION_HEADER = "X-GTO-Decision-Action";
+    private static final String CAN_CHECK_HEADER = "X-GTO-Can-Check";
     private Context context;
     private String token;
     private String uuid;
@@ -112,7 +114,12 @@ public class NetworkManager {
                 trace.responseEndMs = SystemClock.elapsedRealtime();
                 ScreenCaptureService.blog("NET: OK " + (trace.responseEndMs - trace.httpStartMs)
                         + "ms resp=" + responseBody.length() + "B trace=" + trace.traceId);
-                return new UploadResult(responseBody, trace.traceId);
+                return new UploadResult(
+                        responseBody,
+                        trace.traceId,
+                        response.header(DECISION_ACTION_HEADER),
+                        "1".equals(response.header(CAN_CHECK_HEADER))
+                );
             }
             trace.responseEndMs = SystemClock.elapsedRealtime();
             ScreenCaptureService.blog("NET: FAIL " + response.code() + " "
@@ -169,10 +176,14 @@ public class NetworkManager {
     public static final class UploadResult {
         public final String responseBody;
         public final String traceId;
+        public final String decisionAction;
+        public final boolean canCheck;
 
-        UploadResult(String responseBody, String traceId) {
+        UploadResult(String responseBody, String traceId, String decisionAction, boolean canCheck) {
             this.responseBody = responseBody;
             this.traceId = traceId;
+            this.decisionAction = decisionAction;
+            this.canCheck = canCheck;
         }
     }
 

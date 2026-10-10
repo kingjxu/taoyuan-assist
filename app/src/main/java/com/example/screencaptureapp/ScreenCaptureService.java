@@ -530,7 +530,16 @@ public class ScreenCaptureService extends Service {
                                 LatencyTraceStore.discard(trace);
                             } else {
                                 latestDisplayedFrameTimeMs = timestamp;
-                                updateFloatingWindowWithResultPayload(result.responseBody, result.traceId);
+                                String displayPayload = DecisionResultNormalizer.applyFreeCheckFallback(
+                                        result.responseBody,
+                                        result.decisionAction,
+                                        result.canCheck
+                                );
+                                if (!result.responseBody.equals(displayPayload)) {
+                                    blog("DECISION_FALLBACK: free fold changed to check trace="
+                                            + result.traceId);
+                                }
+                                updateFloatingWindowWithResultPayload(displayPayload, result.traceId);
                             }
                         } catch (Exception e)
                         {

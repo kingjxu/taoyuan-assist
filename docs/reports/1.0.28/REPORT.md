@@ -19,7 +19,8 @@
 - 兜底依赖同一 HTTPS 响应中的两个服务端事实头，不从客户端截图或显示文字自行推断下注状态。
 - 本次没有 Android/鸿蒙真机，静态检查与 JVM 单测不能替代真实悬浮窗展示回验；部署后通过线上 `DECISION_FALLBACK` 日志和现场反馈继续观察。
 
-## 待部署回验
+## 部署
 
-- 官网 APK 的 HTTP 状态、大小、SHA256、versionCode/versionName、`check_apk.py`、v2 签名和证书。
-- 1.0.27 可覆盖升级至 1.0.28，签名证书保持一致。
+- 2026-10-10 部署前官网 1.0.27 APK SHA256 为 `f5b80700112852b096a65004c38941e53d461975851b23f706d5c37538afefc4`；旧包备份到 `/home/ubuntu/taoyuan-backups/20261010-175004-before-1.0.28`。
+- 候选上传后校验 SHA256，通过下载目录同目录临时文件原子替换。公网 `https://www.ddbaby.site/tyzs/api/download` 回验 HTTP 200、`6914626` bytes、SHA256 `6fc22192233d25c33b12379a348899e4d121eeee8b665e654ae6cce3536c3489`，与候选逐字节一致。
+- 公网 APK 为 versionCode=21、versionName=1.0.28，`check_apk.py` 通过，v2 签名有效；证书 SHA256 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8` 与 1.0.27 相同，可覆盖升级。

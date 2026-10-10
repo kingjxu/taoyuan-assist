@@ -10,8 +10,8 @@ android {
         applicationId "com.example.screencaptureapp"
         minSdk 26
         targetSdk 33
-        versionCode 20
-        versionName "1.0.27"
+        versionCode 22
+        versionName "1.0.29"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 

@@ -3,6 +3,8 @@ package com.example.screencaptureapp;
 import android.content.Intent;
 import android.os.Looper;
 import android.provider.Settings;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.TextView;
 import androidx.appcompat.app.AlertDialog;
@@ -96,6 +98,24 @@ public class OverlayWindowTest {
         assertEquals("跟注", text.getText().toString());
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(3));
         assertEquals("", text.getText().toString());
+    }
+
+    @Test public void floatingWindowCanBeDraggedWithoutMovingAboveScreen() {
+        FloatingWindowService service = service();
+        service.onStartCommand(new Intent(), 0, 1);
+        View view = ReflectionHelpers.getField(service, "floatingView");
+        WindowManager.LayoutParams params = (WindowManager.LayoutParams) view.getLayoutParams();
+        int startX = params.x;
+
+        view.dispatchTouchEvent(MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN,
+                100, 100, 0));
+        view.dispatchTouchEvent(MotionEvent.obtain(0, 10, MotionEvent.ACTION_MOVE,
+                180, 20, 0));
+        view.dispatchTouchEvent(MotionEvent.obtain(0, 20, MotionEvent.ACTION_UP,
+                180, 20, 0));
+
+        assertEquals(startX + 80, params.x);
+        assertEquals(0, params.y);
     }
 
     private MainActivity mainScreen() {

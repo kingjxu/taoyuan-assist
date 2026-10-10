@@ -25,9 +25,17 @@ final class HeroTurnDetector {
             return false;
         }
 
+        double tableSurface = ratio(width, height, pixels, 0.30d, 0.30d, 0.70d, 0.65d,
+                HeroTurnDetector::isTableSurface);
+        if (tableSurface <= 0.50d) {
+            return false;
+        }
+
         double leftRed = ratio(width, height, pixels, 0.24d, 0.70d, 0.40d, 0.78d,
                 HeroTurnDetector::isDeepRed);
-        if (leftRed <= 0.06d) {
+        double leftWhite = ratio(width, height, pixels, 0.24d, 0.70d, 0.40d, 0.78d,
+                HeroTurnDetector::isWhite);
+        if (leftRed <= 0.045d && leftWhite <= 0.05d) {
             return false;
         }
 
@@ -89,6 +97,12 @@ final class HeroTurnDetector {
     private static boolean isWhite(int color) {
         Hsv hsv = toHsv(color);
         return hsv.saturation < 70 && hsv.value > 180;
+    }
+
+    private static boolean isTableSurface(int color) {
+        Hsv hsv = toHsv(color);
+        return hsv.hue >= 70 && hsv.hue <= 200
+                && hsv.saturation > 50 && hsv.value > 30;
     }
 
     private static Hsv toHsv(int color) {

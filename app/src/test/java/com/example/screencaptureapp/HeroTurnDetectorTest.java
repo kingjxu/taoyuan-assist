@@ -31,6 +31,34 @@ public class HeroTurnDetectorTest {
     }
 
     @Test
+    public void rejectsLauncherIconsWithoutTableSurface() {
+        FakePixels pixels = new FakePixels(WIDTH, HEIGHT, 0xffff8a9e);
+        pixels.fill(0.24, 0.70, 0.40, 0.78, 0xffdc0000);
+        pixels.fill(0.61, 0.70, 0.76, 0.78, 0xff00dc00);
+
+        assertFalse(HeroTurnDetector.isHeroTurn(WIDTH, HEIGHT, pixels));
+    }
+
+    @Test
+    public void rejectsHistorySheetOverVisibleActionButtons() {
+        FakePixels pixels = new FakePixels(WIDTH, HEIGHT, 0xff145a55);
+        pixels.fill(0.30, 0.30, 0.70, 0.65, 0xff202020);
+        pixels.fill(0.24, 0.70, 0.40, 0.78, 0xffdc0000);
+        pixels.fill(0.61, 0.70, 0.76, 0.78, 0xff00dc00);
+
+        assertFalse(HeroTurnDetector.isHeroTurn(WIDTH, HEIGHT, pixels));
+    }
+
+    @Test
+    public void acceptsGrayFoldXForAllInOption() {
+        FakePixels pixels = new FakePixels(WIDTH, HEIGHT, 0xff145a55);
+        pixels.fill(0.27, 0.72, 0.37, 0.76, 0xffffffff);
+        pixels.fill(0.61, 0.70, 0.76, 0.78, 0xffdc0000);
+
+        assertTrue(HeroTurnDetector.isHeroTurn(WIDTH, HEIGHT, pixels));
+    }
+
+    @Test
     public void rejectsUnsupportedLandscapeCanvas() {
         FakePixels pixels = new FakePixels(1000, 490, 0xffff0000);
         assertFalse(HeroTurnDetector.isHeroTurn(1000, 490, pixels));

@@ -13,9 +13,11 @@ import android.os.IBinder;
 import android.provider.Settings;
 import android.graphics.PixelFormat;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.WindowManager;
 import android.widget.TextView;
 import androidx.core.app.NotificationCompat;
@@ -144,6 +146,7 @@ public class FloatingWindowService extends Service {
             params.x = 20;
             params.y = 50;
             params.windowAnimations = 0;
+            makeDraggable(candidate, params);
             windowManager.addView(candidate, params);
             // Publish only after addView succeeds, so a failed attempt is retryable.
             floatingView = candidate;
@@ -157,6 +160,62 @@ public class FloatingWindowService extends Service {
             OverlayDiagnostics.report(this, "悬浮窗创建失败。请检查系统的悬浮窗限制；若已允许，请停止录制后重试。", e);
             return false;
         }
+    }
+
+    private void makeDraggable(View view, WindowManager.LayoutParams params) {
+        int touchSlop = ViewConfiguration.get(this).getScaledTouchSlop();
+        view.setOnTouchListener(new View.OnTouchListener() {
+            private float downRawX;
+            private float downRawY;
+            private int downWindowX;
+            private int downWindowY;
+            private boolean dragging;
+
+            @Override
+            public boolean onTouch(View touchedView, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        downRawX = event.getRawX();
+                        downRawY = event.getRawY();
+                        downWindowX = params.x;
+                        downWindowY = params.y;
+                        dragging = false;
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        float deltaX = event.getRawX() - downRawX;
+                        float deltaY = event.getRawY() - downRawY;
+                        if (!dragging && Math.hypot(deltaX, deltaY) < touchSlop) {
+                            return true;
+                        }
+                        dragging = true;
+                        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+                        int screenHeight = getResources().getDisplayMetrics().heightPixels;
+                        int horizontalLimit = Math.max(0,
+                                (screenWidth - touchedView.getWidth()) / 2);
+                        int bottomLimit = Math.max(0,
+                                screenHeight - touchedView.getHeight());
+                        params.x = Math.max(-horizontalLimit, Math.min(horizontalLimit,
+                                downWindowX + Math.round(deltaX)));
+                        params.y = Math.max(0, Math.min(bottomLimit,
+                                downWindowY + Math.round(deltaY)));
+                        try {
+                            windowManager.updateViewLayout(touchedView, params);
+                        } catch (RuntimeException e) {
+                            Log.w(TAG, "Unable to move floating window", e);
+                        }
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                        if (!dragging) {
+                            touchedView.performClick();
+                        }
+                        return true;
+                    case MotionEvent.ACTION_CANCEL:
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        });
     }
 
     public void updateFeedbackText(String str) {

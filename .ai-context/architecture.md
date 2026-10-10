@@ -28,3 +28,5 @@ FloatingWindowService 记录可捕获的初始化、前台服务启动、权限�
 1.0.27 在每张已生成 Bitmap 上用 polerv2 左侧红色 fold ROI 与右侧操作按钮 ROI 做轻量 HSV 等价颜色门控；检测仅用于时延追踪，不控制截图或上传。连续可操作帧共用随机 `decision_cycle_id`，连续两张非 Hero 帧结束 cycle。服务端只把同一 cycle 的首次实际悬浮窗展示计入 `client_complete`，后续展示标记为 repeat；decided、其他玩家阶段和重复 Hero 不进入首次结果指标。旧 v1 trace 保持兼容。
 
 1.0.29 的 Hero cycle 门控与服务端现场修正保持一致：先确认中央绿色牌桌表面，再接受左侧红色 fold 或 all-in option 的灰色白 X，并要求右侧操作控件；启动页和历史面板不再误建 cycle。悬浮窗可直接拖拽，移动超过系统 touch slop 后按原始触点增量更新 WindowManager 坐标，并限制在当前屏幕宽高范围内。
+
+1.0.29/code22 已于2026-10-10发布到官网。公网APK为6,858,151 bytes，SHA256 `26406916cf8de1815469b4f8388b909c5988dc2e8d2dcbece5cbe32e282f3b57`，v2签名证书SHA256 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与1.0.27一致；旧资产备份目录为 `/home/ubuntu/taoyuan-backups/20261010-210905-before-1.0.29`。无真机回验，不据此声明厂商悬浮窗和手势导航行为已验证。

@@ -431,6 +431,18 @@
             android:layout_marginBottom="8dp">
 
             <Button
+                android:id="@+id/btn_settings"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:text="@string/btn_settings"
+                android:textColor="@color/gto_accent"
+                android:textSize="15sp"
+                android:background="@drawable/bg_btn_outline"
+                android:layout_marginBottom="10dp"
+                android:elevation="0dp"
+                android:stateListAnimator="@null" />
+
+            <Button
                 android:id="@+id/btn_website"
                 android:layout_width="match_parent"
                 android:layout_height="46dp"

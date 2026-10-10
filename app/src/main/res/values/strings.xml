@@ -34,9 +34,10 @@
     <string name="current_strategy">当前策略: GTO均衡策略</string>
     <string name="btn_enter">进入</string>
     <string name="btn_website">访问官网</string>
+    <string name="btn_settings">设置</string>
     <string name="btn_about">关于我们</string>
     <string name="btn_logout">退出登录</string>
     <string name="footer_copyright">© 2026 桃园助手</string>
-    <string name="app_version">v1.0.29</string>
+    <string name="app_version">v1.0.30</string>
     <string name="secure_access">SECURE ACCESS</string>
 </resources>

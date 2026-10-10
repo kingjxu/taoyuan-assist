@@ -15,6 +15,7 @@ import android.graphics.PixelFormat;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -30,6 +31,7 @@ public class FloatingWindowService extends Service {
     public static final String ACTION_HIDE_WINDOW = "HIDE_WINDOW";
     public static final String ACTION_SHOW_WINDOW = "SHOW_WINDOW";
     public static final String ACTION_UPDATE_TEXT = "UPDATE_TEXT";
+    public static final String ACTION_UPDATE_SETTINGS = "UPDATE_SETTINGS";
     private static final String CHANNEL_ID = "floating_window_channel";
     private static final long CLEAR_TEXT_DELAY_MS = 5000;
     public static final String EXTRA_TEXT = "text";
@@ -67,6 +69,10 @@ public class FloatingWindowService extends Service {
                 }
                 return;
             }
+            if (FloatingWindowService.ACTION_UPDATE_SETTINGS.equals(intent.getAction())) {
+                FloatingWindowService.this.applyTextSettings();
+                return;
+            }
             if (FloatingWindowService.ACTION_HIDE_WINDOW.equals(intent.getAction())) {
                 if (FloatingWindowService.this.floatingView != null) {
                     FloatingWindowService.this.floatingView.setVisibility(4);
@@ -95,6 +101,7 @@ public class FloatingWindowService extends Service {
         intentFilter.addAction(ACTION_UPDATE_TEXT);
         intentFilter.addAction(ACTION_HIDE_WINDOW);
         intentFilter.addAction(ACTION_SHOW_WINDOW);
+        intentFilter.addAction(ACTION_UPDATE_SETTINGS);
         try {
             ContextCompat.registerReceiver(this, updateReceiver, intentFilter,
                     ContextCompat.RECEIVER_NOT_EXPORTED);
@@ -135,6 +142,8 @@ public class FloatingWindowService extends Service {
         try {
             View candidate = LayoutInflater.from(this).inflate(R.layout.floating_window, null);
             TextView candidateText = candidate.findViewById(R.id.tv_feedback);
+            candidateText.setTextSize(TypedValue.COMPLEX_UNIT_SP,
+                    OverlayTextSettings.getFontSizeSp(this));
             WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                     WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -159,6 +168,14 @@ public class FloatingWindowService extends Service {
             feedbackText = null;
             OverlayDiagnostics.report(this, "悬浮窗创建失败。请检查系统的悬浮窗限制；若已允许，请停止录制后重试。", e);
             return false;
+        }
+    }
+
+    private void applyTextSettings() {
+        TextView text = feedbackText;
+        if (text != null) {
+            text.setTextSize(TypedValue.COMPLEX_UNIT_SP,
+                    OverlayTextSettings.getFontSizeSp(this));
         }
     }
 

@@ -6,7 +6,7 @@ last_updated: "2026-10-10"
 MainActivity 展示本地会话额度，ApiService.getQuota 通过 GET /lyxz/gto_amount_info 获取 amount、expire_at、is_active；UserSessionManager 保存额度与授权状态。
 ScreenCaptureService 通过 NetworkManager 上传截图，成功响应带 __RESULT__: 前缀经广播交给 FloatingWindowService；后者解析 JSON 的 Result 并更新 floating_window.xml 中 tv_feedback。
 MainActivity.onResume 在登录有效且界面初始化后刷新额度：录制时沿用 verifyAuthorizationWhileRecording，否则 refreshQuota(false)。普通刷新防重复请求，后台解析响应，回主线程检查 Activity 与登录 token 后更新缓存和界面；自动成功不弹 Toast，失败保留原缓存并提示。
-悬浮窗初始显示“等待反馈”，只有非空字符串 Result 能覆盖占位；普通状态、失败文本及非法响应不展示、不重置计时。有效结果红色加粗20sp，保留120字符/两行截断与5秒清空规则；新有效结果重置5秒计时，清空后保持空白直到下一次有效结果。
+悬浮窗初始显示“等待反馈”，只有非空字符串 Result 能覆盖占位；普通状态、失败文本及非法响应不展示、不重置计时。有效结果为红色粗体，字号从本地 `overlay_display_settings` 读取，范围14–36sp、默认20sp；保留120字符/两行截断与5秒清空规则，新有效结果重置5秒计时，清空后保持空白直到下一次有效结果。
 
 反馈广播由 ContextCompat.RECEIVER_NOT_EXPORTED 注册，覆盖全部受支持版本；Android 8–12 使用 AndroidX 自动合并的应用签名权限限制发送者，Android 13+ 使用系统未导出标记。发送端指定本应用包名。
 
@@ -30,3 +30,5 @@ FloatingWindowService 记录可捕获的初始化、前台服务启动、权限�
 1.0.29 的 Hero cycle 门控与服务端现场修正保持一致：先确认中央绿色牌桌表面，再接受左侧红色 fold 或 all-in option 的灰色白 X，并要求右侧操作控件；启动页和历史面板不再误建 cycle。悬浮窗可直接拖拽，移动超过系统 touch slop 后按原始触点增量更新 WindowManager 坐标，并限制在当前屏幕宽高范围内。
 
 客户端业务提交 `847ff00` 构建的1.0.29/code22已于2026-10-10发布到官网；部署事实记录提交为 `5266dc1`，不改变APK。公网APK为6,858,151 bytes，SHA256 `26406916cf8de1815469b4f8388b909c5988dc2e8d2dcbece5cbe32e282f3b57`，v2签名证书SHA256 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与1.0.27一致；旧资产备份目录为 `/home/ubuntu/taoyuan-backups/20261010-210905-before-1.0.29`。公网回验只证明资产、版本和签名一致；无真机回验，不据此声明厂商悬浮窗和手势导航行为已验证。
+
+1.0.30/code23 在主界面“访问官网”上方增加“设置”按钮。字体设置弹窗使用与悬浮窗相同的黑底、红色粗体示例文本，滑动14–36sp时同步显示数值和实际sp预览；保存后持久化，并通过应用内非导出广播让已运行的悬浮窗立即刷新，取消不修改配置。该设置不新增网络请求、账号字段或系统权限。

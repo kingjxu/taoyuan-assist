@@ -20,11 +20,13 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.util.Log;
 import android.view.View;
+import android.view.LayoutInflater;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -56,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
     private Button btnActivateLicense;
     private ImageButton btnRefreshQuota;
     private Button btnEnterAAPoker, btnStopRecording;
-    private Button btnWebsite, btnAbout, btnLogout, btnReactivate;
+    private Button btnWebsite, btnSettings, btnAbout, btnLogout, btnReactivate;
     private LinearLayout layoutRecordingStatus;
     private LinearLayout layoutLicenseActivation;
     private ImageView ivAapokerIcon;
@@ -72,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean activityResumed;
     private boolean overlayReceiverRegistered;
     private AlertDialog overlayDialog;
+    private AlertDialog settingsDialog;
     private final BroadcastReceiver overlayReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
             if (activityResumed) showOverlayProblemIfNeeded();
@@ -131,6 +134,7 @@ public class MainActivity extends AppCompatActivity {
         btnEnterAAPoker = findViewById(R.id.btn_enter_aapoker);
         btnStopRecording = findViewById(R.id.btn_stop_recording);
         btnWebsite = findViewById(R.id.btn_website);
+        btnSettings = findViewById(R.id.btn_settings);
         btnAbout = findViewById(R.id.btn_about);
         btnLogout = findViewById(R.id.btn_logout);
         btnReactivate = findViewById(R.id.btn_reactivate);
@@ -232,6 +236,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        btnSettings.setOnClickListener(v -> showSettingsDialog());
+
         btnAbout.setOnClickListener(v -> new AlertDialog.Builder(this)
                 .setTitle(DialogTextUtils.redBold("关于 桃园助手"))
                 .setMessage(DialogTextUtils.redBold("桃园助手 " + getString(R.string.app_version) + "\n\n专业扑克决策辅助平台\n桃园团队出品\n\n© 2026 桃园助手"))
@@ -244,6 +250,51 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton("确定", (dialog, which) -> doLogout())
                 .setNegativeButton("取消", null)
                 .show());
+    }
+
+    private void showSettingsDialog() {
+        if (settingsDialog != null && settingsDialog.isShowing()) return;
+        View content = LayoutInflater.from(this).inflate(R.layout.dialog_overlay_settings, null);
+        TextView value = content.findViewById(R.id.tv_font_size_value);
+        TextView preview = content.findViewById(R.id.tv_font_preview);
+        SeekBar seekBar = content.findViewById(R.id.seek_font_size);
+        int currentSize = OverlayTextSettings.getFontSizeSp(this);
+        seekBar.setMax(OverlayTextSettings.MAX_FONT_SIZE_SP
+                - OverlayTextSettings.MIN_FONT_SIZE_SP);
+        seekBar.setProgress(currentSize - OverlayTextSettings.MIN_FONT_SIZE_SP);
+        updateFontPreview(value, preview, currentSize);
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+                updateFontPreview(value, preview,
+                        OverlayTextSettings.MIN_FONT_SIZE_SP + progress);
+            }
+
+            @Override public void onStartTrackingTouch(SeekBar bar) {
+            }
+
+            @Override public void onStopTrackingTouch(SeekBar bar) {
+            }
+        });
+        settingsDialog = new AlertDialog.Builder(this)
+                .setTitle("悬浮窗字体大小")
+                .setView(content)
+                .setPositiveButton("保存", (dialog, which) -> {
+                    int selectedSize = OverlayTextSettings.MIN_FONT_SIZE_SP
+                            + seekBar.getProgress();
+                    OverlayTextSettings.setFontSizeSp(this, selectedSize);
+                    Intent update = new Intent(FloatingWindowService.ACTION_UPDATE_SETTINGS)
+                            .setPackage(getPackageName());
+                    sendBroadcast(update);
+                })
+                .setNegativeButton("取消", null)
+                .create();
+        settingsDialog.setOnDismissListener(dialog -> settingsDialog = null);
+        settingsDialog.show();
+    }
+
+    private static void updateFontPreview(TextView value, TextView preview, int fontSizeSp) {
+        value.setText("当前字体：" + fontSizeSp + "sp");
+        preview.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp);
     }
 
     // ==================== 退出登录 ====================

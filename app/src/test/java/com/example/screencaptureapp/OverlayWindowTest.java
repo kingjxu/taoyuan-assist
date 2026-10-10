@@ -5,8 +5,11 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.TextView;
+import android.widget.Button;
+import android.widget.SeekBar;
 import androidx.appcompat.app.AlertDialog;
 import org.junit.After;
 import org.junit.Before;
@@ -39,6 +42,8 @@ public class OverlayWindowTest {
                 "com.example.screencaptureapp.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
                 android.Manifest.permission.INTERNET, android.Manifest.permission.ACCESS_NETWORK_STATE);
         ReflectionHelpers.setStaticField(UserSessionManager.class, "instance", null);
+        OverlayTextSettings.setFontSizeSp(RuntimeEnvironment.getApplication(),
+                OverlayTextSettings.DEFAULT_FONT_SIZE_SP);
     }
 
     @After public void cleanup() {
@@ -118,6 +123,23 @@ public class OverlayWindowTest {
         assertEquals(0, params.y);
     }
 
+    @Test public void floatingWindowUsesSavedFontSizeAndUpdatesWhileRunning() {
+        OverlayTextSettings.setFontSizeSp(RuntimeEnvironment.getApplication(), 28);
+        FloatingWindowService service = service();
+        service.onStartCommand(new Intent(), 0, 1);
+        TextView text = ReflectionHelpers.getField(service, "feedbackText");
+        assertEquals(28f, text.getTextSize() / text.getResources().getDisplayMetrics().scaledDensity,
+                0.1f);
+
+        OverlayTextSettings.setFontSizeSp(service, 34);
+        service.sendBroadcast(new Intent(FloatingWindowService.ACTION_UPDATE_SETTINGS)
+                .setPackage(service.getPackageName()));
+        shadowOf(Looper.getMainLooper()).idle();
+
+        assertEquals(34f, text.getTextSize() / text.getResources().getDisplayMetrics().scaledDensity,
+                0.1f);
+    }
+
     private MainActivity mainScreen() {
         UserSessionManager.getInstance(RuntimeEnvironment.getApplication())
                 .saveLoginInfo("test-token", "test@example.invalid", "test");
@@ -165,5 +187,38 @@ public class OverlayWindowTest {
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
         shadowOf(Looper.getMainLooper()).idle();
         assertEquals("", OverlayDiagnostics.pendingError(activity));
+    }
+
+    @Test public void settingsButtonPreviewsAndPersistsOverlayFontSize() {
+        MainActivity activity = mainScreen();
+        Button settings = activity.findViewById(R.id.btn_settings);
+        Button website = activity.findViewById(R.id.btn_website);
+        ViewGroup actions = (ViewGroup) settings.getParent();
+        assertTrue(actions.indexOfChild(settings) < actions.indexOfChild(website));
+        settings.performClick();
+        AlertDialog dialog = ReflectionHelpers.getField(activity, "settingsDialog");
+        assertTrue(dialog.isShowing());
+        SeekBar seekBar = dialog.findViewById(R.id.seek_font_size);
+        TextView value = dialog.findViewById(R.id.tv_font_size_value);
+        TextView preview = dialog.findViewById(R.id.tv_font_preview);
+
+        seekBar.setProgress(30 - OverlayTextSettings.MIN_FONT_SIZE_SP);
+        assertEquals("当前字体：30sp", value.getText().toString());
+        assertEquals(30f,
+                preview.getTextSize() / preview.getResources().getDisplayMetrics().scaledDensity,
+                0.1f);
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        shadowOf(Looper.getMainLooper()).idle();
+
+        assertEquals(30, OverlayTextSettings.getFontSizeSp(activity));
+    }
+
+    @Test public void overlayFontSizeIsClampedBeforePersistence() {
+        OverlayTextSettings.setFontSizeSp(RuntimeEnvironment.getApplication(), 100);
+        assertEquals(OverlayTextSettings.MAX_FONT_SIZE_SP,
+                OverlayTextSettings.getFontSizeSp(RuntimeEnvironment.getApplication()));
+        OverlayTextSettings.setFontSizeSp(RuntimeEnvironment.getApplication(), 1);
+        assertEquals(OverlayTextSettings.MIN_FONT_SIZE_SP,
+                OverlayTextSettings.getFontSizeSp(RuntimeEnvironment.getApplication()));
     }
 }

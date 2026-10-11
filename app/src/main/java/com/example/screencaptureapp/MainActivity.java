@@ -21,12 +21,15 @@ import android.util.TypedValue;
 import android.util.Log;
 import android.view.View;
 import android.view.LayoutInflater;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -258,6 +261,25 @@ public class MainActivity extends AppCompatActivity {
         TextView value = content.findViewById(R.id.tv_font_size_value);
         TextView preview = content.findViewById(R.id.tv_font_preview);
         SeekBar seekBar = content.findViewById(R.id.seek_font_size);
+        Spinner strategySpinner = content.findViewById(R.id.spinner_strategy_profile);
+        TextView strategySummary = content.findViewById(R.id.tv_strategy_summary);
+        ArrayAdapter<String> strategyAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, StrategyProfileSettings.getLabels());
+        strategyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        strategySpinner.setAdapter(strategyAdapter);
+        strategySpinner.setSelection(StrategyProfileSettings.getSelectedIndex(this));
+        strategySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(
+                    AdapterView<?> parent, View view, int position, long id
+            ) {
+                updateStrategySummary(strategySummary,
+                        StrategyProfileSettings.PROFILES[position]);
+            }
+
+            @Override public void onNothingSelected(AdapterView<?> parent) {
+                updateStrategySummary(strategySummary, StrategyProfileSettings.PROFILES[0]);
+            }
+        });
         int currentSize = OverlayTextSettings.getFontSizeSp(this);
         seekBar.setMax(OverlayTextSettings.MAX_FONT_SIZE_SP
                 - OverlayTextSettings.MIN_FONT_SIZE_SP);
@@ -276,12 +298,14 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         settingsDialog = new AlertDialog.Builder(this)
-                .setTitle("悬浮窗字体大小")
+                .setTitle("设置")
                 .setView(content)
                 .setPositiveButton("保存", (dialog, which) -> {
                     int selectedSize = OverlayTextSettings.MIN_FONT_SIZE_SP
                             + seekBar.getProgress();
                     OverlayTextSettings.setFontSizeSp(this, selectedSize);
+                    StrategyProfileSettings.setSelectedIndex(this,
+                            strategySpinner.getSelectedItemPosition());
                     Intent update = new Intent(FloatingWindowService.ACTION_UPDATE_SETTINGS)
                             .setPackage(getPackageName());
                     sendBroadcast(update);
@@ -295,6 +319,17 @@ public class MainActivity extends AppCompatActivity {
     private static void updateFontPreview(TextView value, TextView preview, int fontSizeSp) {
         value.setText("当前字体：" + fontSizeSp + "sp");
         preview.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp);
+    }
+
+    private static void updateStrategySummary(
+            TextView summary,
+            StrategyProfileSettings.Profile profile
+    ) {
+        if (profile.vpip == 0 && profile.pfr == 0) {
+            summary.setText("默认策略：保持当前决策链路");
+        } else {
+            summary.setText("上传参数：VPIP " + profile.vpip + " / PFR " + profile.pfr);
+        }
     }
 
     private void dismissSettingsDialog() {

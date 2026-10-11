@@ -10,6 +10,7 @@ import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Button;
 import android.widget.SeekBar;
+import android.widget.Spinner;
 import androidx.appcompat.app.AlertDialog;
 import org.junit.After;
 import org.junit.Before;
@@ -44,6 +45,7 @@ public class OverlayWindowTest {
         ReflectionHelpers.setStaticField(UserSessionManager.class, "instance", null);
         OverlayTextSettings.setFontSizeSp(RuntimeEnvironment.getApplication(),
                 OverlayTextSettings.DEFAULT_FONT_SIZE_SP);
+        StrategyProfileSettings.setSelectedIndex(RuntimeEnvironment.getApplication(), 0);
     }
 
     @After public void cleanup() {
@@ -201,16 +203,27 @@ public class OverlayWindowTest {
         SeekBar seekBar = dialog.findViewById(R.id.seek_font_size);
         TextView value = dialog.findViewById(R.id.tv_font_size_value);
         TextView preview = dialog.findViewById(R.id.tv_font_preview);
+        Spinner strategy = dialog.findViewById(R.id.spinner_strategy_profile);
+        TextView strategySummary = dialog.findViewById(R.id.tv_strategy_summary);
 
         seekBar.setProgress(30 - OverlayTextSettings.MIN_FONT_SIZE_SP);
         assertEquals("当前字体：30sp", value.getText().toString());
         assertEquals(30f,
                 preview.getTextSize() / preview.getResources().getDisplayMetrics().scaledDensity,
                 0.1f);
+        assertEquals("默认", strategy.getSelectedItem().toString());
+        strategy.setSelection(5);
+        shadowOf(Looper.getMainLooper()).idle();
+        assertEquals("VPIP40_PFR10", strategy.getSelectedItem().toString());
+        assertEquals("上传参数：VPIP 40 / PFR 10", strategySummary.getText().toString());
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
         shadowOf(Looper.getMainLooper()).idle();
 
         assertEquals(30, OverlayTextSettings.getFontSizeSp(activity));
+        StrategyProfileSettings.Profile profile =
+                StrategyProfileSettings.getSelectedProfile(activity);
+        assertEquals(40, profile.vpip);
+        assertEquals(10, profile.pfr);
     }
 
     @Test public void overlayFontSizeIsClampedBeforePersistence() {

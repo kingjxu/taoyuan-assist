@@ -80,9 +80,12 @@ public class NetworkManager {
         ScreenCaptureService.blog("NET: sending streaming body jpeg=" + jpegSize + "B");
 
         trace.httpStartMs = SystemClock.elapsedRealtime();
+        StrategyProfileSettings.Profile strategy =
+                StrategyProfileSettings.getSelectedProfile(context);
         Request.Builder requestBuilder = new Request.Builder()
                 .url(UPLOAD_URL)
-                .post(createUploadRequestBody(reusableStream.getBuffer(), jpegSize, timestamp, trace))
+                .post(createUploadRequestBody(reusableStream.getBuffer(), jpegSize, timestamp,
+                        trace, strategy.vpip, strategy.pfr))
                 .addHeader("User-Agent", "ScreenCaptureApp/1.0")
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Authorization", "Bearer " + (token == null ? "" : token))
@@ -131,11 +134,13 @@ public class NetworkManager {
         }
     }
 
-    private RequestBody createUploadRequestBody(
+    RequestBody createUploadRequestBody(
             final byte[] jpegBuffer,
             final int jpegLength,
             final long timestamp,
-            final LatencyTraceStore.TraceRecord trace
+            final LatencyTraceStore.TraceRecord trace,
+            final int vpip,
+            final int pfr
     ) {
         return new RequestBody() {
             @Override
@@ -160,7 +165,11 @@ public class NetworkManager {
                 sink.writeUtf8(Long.toString(timestamp));
                 sink.writeUtf8(",\"uuid\":\"");
                 writeEscapedJsonString(sink, uuid);
-                sink.writeUtf8("\"}");
+                sink.writeUtf8("\",\"vpip\":");
+                sink.writeUtf8(Integer.toString(vpip));
+                sink.writeUtf8(",\"pfr\":");
+                sink.writeUtf8(Integer.toString(pfr));
+                sink.writeUtf8("}");
                 trace.requestBodyEndMs = SystemClock.elapsedRealtime();
             }
         };

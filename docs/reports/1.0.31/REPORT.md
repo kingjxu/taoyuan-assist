@@ -23,7 +23,7 @@
 
 ## 发布
 
-- 客户端业务提交 `9b2848f`、真实联调记录提交 `ac9f491` 经 CR LGTM 且用户明确批准后发布；本次只发布客户端，未替换或重启 ddbaby 服务端。
+- 客户端业务提交 `9b2848f`、真实联调记录提交 `ac9f491` 经 CR LGTM 且用户明确批准后发布；发布事实记录提交为 `24dcdcc`，不改变 APK。本次只发布客户端，未替换或重启 ddbaby 服务端。
 - 发布前官网 1.0.30 的 SHA256 为 `0576702ce6c0597ba7cfe3691b202f8484d0a7c0fca967e8a63c8349bb4477c3`，已备份到 `/home/ubuntu/taoyuan-backups/20261011-184605-before-1.0.31`。候选上传后先核对 SHA，再在下载目录同文件系统原子替换，目标权限为0644。
 - 公网 `https://www.ddbaby.site/tyzs/api/download` 返回 HTTP 200、`Content-Length=6864059`；重新下载 SHA256 为 `040f3d77b80ace349b39f0cf238873acd96d256ccc9a342f96ca421c3ba42c70`，与冻结候选逐字节一致。
 - 公网 APK 复验为 `versionName=1.0.31`、`versionCode=24`，`scripts/check_apk.py` 通过，APK Signature Scheme v2 有效；证书 SHA256 为 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与官网旧版一致，可覆盖升级。

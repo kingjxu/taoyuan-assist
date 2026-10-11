@@ -33,7 +33,7 @@
 
 ## 发布
 
-- 客户端业务提交 `1b2dc74` 已经CR LGTM，并于2026-10-11在用户明确批准后发布。本次只替换官网APK，没有修改或重启ddbaby服务端。
+- 客户端业务提交 `1b2dc74` 已经CR LGTM，并于2026-10-11在用户明确批准后发布；发布事实记录提交为 `eb99a9d`，不改变APK。本次只替换官网APK，没有修改或重启ddbaby服务端。
 - 发布前官网1.0.31为6,864,059 bytes，SHA256 `040f3d77b80ace349b39f0cf238873acd96d256ccc9a342f96ca421c3ba42c70`；已备份到 `/home/ubuntu/taoyuan-backups/20261011-2046-before-1.0.32`，备份SHA与旧官网资产一致。
 - clean构建候选先通过版本、`check_apk.py`、v2签名和证书校验，再上传到下载目录并核对SHA，最后在同目录原子替换，目标权限保持0644。
 - 公网 `https://www.ddbaby.site/tyzs/api/download` 返回HTTP 200、`Content-Length=6869609`；重新下载SHA256为 `fa3d8e4b99a96236824634b5f19b307f06a7df2c3968b6ce81c50c187dde6b25`，与冻结候选逐字节一致。

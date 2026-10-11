@@ -20,13 +20,22 @@
 
 - 候选路径：`/tmp/taoyuan-assist-1.0.32-settings-ui-candidate.apk`。
 - 版本：`versionName=1.0.32`、`versionCode=25`。
-- 大小：`6,869,605 bytes`。
-- SHA256：`72e8b15a95241ccc9e1d7897ba0f736c87dc2cc397c05a927376cf498653613b`。
+- 大小：`6,869,609 bytes`。
+- SHA256：`fa3d8e4b99a96236824634b5f19b307f06a7df2c3968b6ce81c50c187dde6b25`。
 - `scripts/check_apk.py` 通过，APK Signature Scheme v2 有效。
 - 证书 SHA256：`82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与官网1.0.31一致，可覆盖升级。
 
 ## 边界与发布门禁
 
 - 当前没有 Android 真机或厂商系统视觉回验；自动化验证覆盖资源、文字对比度、行为和构建，不等同于真实设备截图验收。
-- 1.0.32 目前只是本地候选，未替换官网1.0.31，也未推送远端main。
-- 按用户要求，完成代码审查后先交付候选 APK；只有用户明确同意后才发布官网并推送main。
+- 1.0.32 已在用户明确批准后发布到官网；远端main推送与本次官网资产替换分开记录。
+- ddbaby 服务端未随本次客户端发布变更，非默认策略仍需等待服务端另行批准部署后才能走GTO v2。
+
+## 发布
+
+- 客户端业务提交 `1b2dc74` 已经CR LGTM，并于2026-10-11在用户明确批准后发布。本次只替换官网APK，没有修改或重启ddbaby服务端。
+- 发布前官网1.0.31为6,864,059 bytes，SHA256 `040f3d77b80ace349b39f0cf238873acd96d256ccc9a342f96ca421c3ba42c70`；已备份到 `/home/ubuntu/taoyuan-backups/20261011-2046-before-1.0.32`，备份SHA与旧官网资产一致。
+- clean构建候选先通过版本、`check_apk.py`、v2签名和证书校验，再上传到下载目录并核对SHA，最后在同目录原子替换，目标权限保持0644。
+- 公网 `https://www.ddbaby.site/tyzs/api/download` 返回HTTP 200、`Content-Length=6869609`；重新下载SHA256为 `fa3d8e4b99a96236824634b5f19b307f06a7df2c3968b6ce81c50c187dde6b25`，与冻结候选逐字节一致。
+- 公网APK复验为 `versionName=1.0.32`、`versionCode=25`，`scripts/check_apk.py`通过，APK Signature Scheme v2有效；证书SHA256为 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与1.0.31一致，可覆盖升级。
+- 当前没有Android/鸿蒙真机，公网资产回验不能证明不同厂商上的Spinner弹出位置、箭头区域点击或整体视觉效果已经实测。

@@ -264,8 +264,10 @@ public class MainActivity extends AppCompatActivity {
         Spinner strategySpinner = content.findViewById(R.id.spinner_strategy_profile);
         TextView strategySummary = content.findViewById(R.id.tv_strategy_summary);
         ArrayAdapter<String> strategyAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, StrategyProfileSettings.getLabels());
-        strategyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                R.layout.item_strategy_selected,
+                R.id.tv_strategy_option,
+                StrategyProfileSettings.getLabels());
+        strategyAdapter.setDropDownViewResource(R.layout.item_strategy_dropdown);
         strategySpinner.setAdapter(strategyAdapter);
         strategySpinner.setSelection(StrategyProfileSettings.getSelectedIndex(this));
         strategySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -298,7 +300,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         settingsDialog = new AlertDialog.Builder(this)
-                .setTitle("设置")
                 .setView(content)
                 .setPositiveButton("保存", (dialog, which) -> {
                     int selectedSize = OverlayTextSettings.MIN_FONT_SIZE_SP
@@ -314,6 +315,21 @@ public class MainActivity extends AppCompatActivity {
                 .create();
         settingsDialog.setOnDismissListener(dialog -> settingsDialog = null);
         settingsDialog.show();
+        if (settingsDialog.getWindow() != null) {
+            settingsDialog.getWindow().setBackgroundDrawableResource(
+                    R.drawable.bg_settings_dialog);
+        }
+        styleSettingsDialogButton(settingsDialog.getButton(AlertDialog.BUTTON_NEGATIVE));
+        styleSettingsDialogButton(settingsDialog.getButton(AlertDialog.BUTTON_POSITIVE));
+    }
+
+    private void styleSettingsDialogButton(Button button) {
+        button.setTextColor(ContextCompat.getColor(this, R.color.gto_accent));
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        button.setAllCaps(false);
+        button.setMinHeight((int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 48, getResources().getDisplayMetrics()));
     }
 
     private static void updateFontPreview(TextView value, TextView preview, int fontSizeSp) {

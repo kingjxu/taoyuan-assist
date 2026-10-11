@@ -30,4 +30,7 @@
     <color name="gto_error">#FFE53935</color>
     <color name="gto_disclaimer_border">#FFD47E1E</color>
     <color name="gto_disclaimer_bg">#1AD47E1E</color>
+    <color name="gto_settings_surface">#FF22172A</color>
+    <color name="gto_settings_surface_high">#FF2B1C35</color>
+    <color name="gto_settings_text_secondary">#FFD3C9D7</color>
 </resources>

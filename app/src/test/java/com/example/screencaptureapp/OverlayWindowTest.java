@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import androidx.appcompat.app.AlertDialog;
@@ -205,6 +206,36 @@ public class OverlayWindowTest {
         TextView preview = dialog.findViewById(R.id.tv_font_preview);
         Spinner strategy = dialog.findViewById(R.id.spinner_strategy_profile);
         TextView strategySummary = dialog.findViewById(R.id.tv_strategy_summary);
+        TextView settingsTitle = dialog.findViewById(R.id.tv_settings_title);
+        TextView strategyLabel = dialog.findViewById(R.id.tv_strategy_label);
+        View strategySelector = dialog.findViewById(R.id.layout_strategy_selector);
+        ImageView dropdownIndicator = dialog.findViewById(R.id.iv_strategy_dropdown);
+
+        int settingsSurface = androidx.core.content.ContextCompat.getColor(
+                activity, R.color.gto_settings_surface);
+        assertTrue(androidx.core.graphics.ColorUtils.calculateContrast(
+                settingsTitle.getCurrentTextColor(), settingsSurface) >= 4.5);
+        assertTrue(androidx.core.graphics.ColorUtils.calculateContrast(
+                strategySummary.getCurrentTextColor(), settingsSurface) >= 4.5);
+        assertEquals(androidx.core.content.ContextCompat.getColor(
+                activity, R.color.gto_accent), strategyLabel.getCurrentTextColor());
+        assertNotNull(strategySelector.getBackground());
+        assertNotNull(dropdownIndicator.getDrawable());
+        assertNotNull(strategy.getPopupBackground());
+        TextView selectedOption = (TextView) strategy.getAdapter().getView(0, null, strategy);
+        int selectorSurface = androidx.core.content.ContextCompat.getColor(
+                activity, R.color.gto_settings_surface_high);
+        assertTrue(androidx.core.graphics.ColorUtils.calculateContrast(
+                selectedOption.getCurrentTextColor(), selectorSurface) >= 4.5);
+        assertTrue(selectedOption.getTextSize()
+                / selectedOption.getResources().getDisplayMetrics().scaledDensity >= 16f);
+        assertEquals(24f,
+                settingsTitle.getTextSize()
+                        / settingsTitle.getResources().getDisplayMetrics().scaledDensity,
+                0.1f);
+        assertEquals(androidx.core.content.ContextCompat.getColor(
+                        activity, R.color.gto_accent),
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).getCurrentTextColor());
 
         seekBar.setProgress(30 - OverlayTextSettings.MIN_FONT_SIZE_SP);
         assertEquals("当前字体：30sp", value.getText().toString());

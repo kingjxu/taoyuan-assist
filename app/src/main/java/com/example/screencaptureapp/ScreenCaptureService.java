@@ -87,6 +87,7 @@ public class ScreenCaptureService extends Service {
     private final AtomicBoolean capturePipelineRebuildInFlight = new AtomicBoolean(false);
     private final AtomicInteger capturePipelineGeneration = new AtomicInteger(0);
     private final HeroDecisionCycleTracker heroDecisionCycleTracker = new HeroDecisionCycleTracker();
+    private final HeroRequestGate heroRequestGate = new HeroRequestGate();
     private static final StringBuilder logBuf = new StringBuilder();
 
     public static void blog(String msg) {
@@ -104,15 +105,18 @@ public class ScreenCaptureService extends Service {
         public final Bitmap bitmap;
         public final long captureTimeMs;
         public final LatencyTraceStore.TraceRecord latencyTrace;
+        public final HeroRequestGate.Observation heroRequestObservation;
 
         public CaptureFrame(
                 Bitmap bitmap,
                 long captureTimeMs,
-                LatencyTraceStore.TraceRecord latencyTrace
+                LatencyTraceStore.TraceRecord latencyTrace,
+                HeroRequestGate.Observation heroRequestObservation
         ) {
             this.bitmap = bitmap;
             this.captureTimeMs = captureTimeMs;
             this.latencyTrace = latencyTrace;
+            this.heroRequestObservation = heroRequestObservation;
         }
     }
 
@@ -224,6 +228,7 @@ public class ScreenCaptureService extends Service {
         emptyRoundCount = 0;
         lastAcceptedFrameTimeMs = 0L;
         heroDecisionCycleTracker.reset();
+        heroRequestGate.reset();
         capturePipelineRebuildInFlight.set(false);
         startUploadConsumerThread(newFrameQueue);
         startCaptureControlThread(newFrameQueue);
@@ -274,18 +279,26 @@ public class ScreenCaptureService extends Service {
                             Bitmap bitmap = buildBitmapFromBuffer(pixelDataBuffer, pStride, rStride);
                             long t3 = System.currentTimeMillis();
                             if (bitmap != null) {
+                                boolean heroTurnVisible = HeroTurnDetector.isHeroTurn(bitmap);
                                 HeroDecisionCycleTracker.Observation cycle =
                                         heroDecisionCycleTracker.observe(
-                                                HeroTurnDetector.isHeroTurn(bitmap),
+                                                heroTurnVisible,
                                                 captureElapsedRealtimeMs
                                         );
+                                HeroRequestGate.Observation requestObservation =
+                                        heroRequestGate.observe(heroTurnVisible);
                                 LatencyTraceStore.TraceRecord trace = LatencyTraceStore.start(
                                         timestamp,
                                         captureElapsedRealtimeMs,
                                         cycle
                                 );
                                 trace.readyMs = SystemClock.elapsedRealtime();
-                                CaptureFrame newFrame = new CaptureFrame(bitmap, timestamp, trace);
+                                CaptureFrame newFrame = new CaptureFrame(
+                                        bitmap,
+                                        timestamp,
+                                        trace,
+                                        requestObservation
+                                );
                                 enqueueLatestFrame(frameQueueRef, newFrame);
                                 blog("CAPT: frame wait=" + waitCount
                                         + " build=" + (t3-t2) + "ms total=" + (t3-t0) + "ms q=" + frameQueueRef.size());
@@ -514,11 +527,32 @@ public class ScreenCaptureService extends Service {
                         LatencyTraceStore.TraceRecord trace = frame.latencyTrace;
                         trace.dequeueMs = SystemClock.elapsedRealtime();
 
+                        if (!heroRequestGate.shouldUpload(
+                                frame.heroRequestObservation,
+                                trace.dequeueMs
+                        )) {
+                            blog("UPLOAD: suppressed repeated Hero frame trace=" + trace.traceId);
+                            LatencyTraceStore.discard(trace);
+                            recycleFrameBitmap(bitmap);
+                            continue;
+                        }
+
                         try {
                             blog("UPLOAD: now sending image trace=" + trace.traceId);
                             NetworkManager.UploadResult result = uploadNetworkManager.uploadImage(
                                     bitmap, timestamp, trace);
                             consecutiveUploadFailures = 0;
+                            String displayText = FloatingWindowService.resolveDisplayText(
+                                    "__RESULT__:" + result.responseBody
+                            );
+                            if (displayText == null) {
+                                heroRequestGate.markFailed(frame.heroRequestObservation);
+                            } else {
+                                heroRequestGate.markSuccessful(
+                                        frame.heroRequestObservation,
+                                        SystemClock.elapsedRealtime()
+                                );
+                            }
                             long tUp1 = System.currentTimeMillis();
                             /*String preview = response != null && response.length() > 80
                                 ? response.substring(0, 80) + "..." : response;*/
@@ -536,6 +570,7 @@ public class ScreenCaptureService extends Service {
                         {
                             Log.e(TAG, "Error uploading image: " + e.getMessage());
                             blog("UPLOAD: FAIL " + e.getMessage());
+                            heroRequestGate.markFailed(frame.heroRequestObservation);
                             LatencyTraceStore.discard(frame.latencyTrace);
                             updateFloatingWindow("上传失败: " + e.getMessage());
                             consecutiveUploadFailures = Math.min(
@@ -734,6 +769,7 @@ public class ScreenCaptureService extends Service {
             latestEnqueuedFrameTimeMs = 0L;
             latestDisplayedFrameTimeMs = 0L;
             heroDecisionCycleTracker.reset();
+            heroRequestGate.reset();
             capturePipelineRebuildInFlight.set(false);
             isStopping.set(false);
             blog("STOP: done");

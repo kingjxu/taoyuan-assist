@@ -1,6 +1,6 @@
 ---
-version: "1.9"
-last_updated: "2026-10-11"
+version: "1.10"
+last_updated: "2026-10-13"
 ---
 # 架构
 MainActivity 展示本地会话额度，ApiService.getQuota 通过 GET /lyxz/gto_amount_info 获取 amount、expire_at、is_active；UserSessionManager 保存额度与授权状态。
@@ -42,3 +42,5 @@ FloatingWindowService 记录可捕获的初始化、前台服务启动、权限�
 1.0.32/code25 将设置弹窗统一为深色高对比度卡片：标题24sp，分区标题16sp金色，说明14sp；策略选择区使用56dp高、2dp金色描边、显式金色箭头和16sp选项，字号预览与保存/取消按钮同步主题样式。策略档位、持久化、上传字段和悬浮窗行为不变。
 
 客户端业务提交 `1b2dc74` 构建的1.0.32/code25已于2026-10-11发布到官网；发布事实记录提交为 `eb99a9d`，不改变APK。公网APK为6,869,609 bytes，SHA256 `fa3d8e4b99a96236824634b5f19b307f06a7df2c3968b6ce81c50c187dde6b25`，v2签名证书SHA256 `82042b739b8e4006d48f2a351c483a9235e82271e49dea12614b416679174ec8`，与1.0.31一致；旧1.0.31备份目录为 `/home/ubuntu/taoyuan-backups/20261011-2046-before-1.0.32`。本次只发布客户端，ddbaby仍为旧运行时；非默认策略仍待服务端另行批准部署。无真机回验，不据此声明厂商Spinner弹出位置、箭头点击和整体视觉已经实测。
+
+1.0.33/code26 在容量1最新帧队列之外增加独立的 Hero 请求闸门。首次 Hero 帧立即上传；合法决策成功返回后，同一连续 Hero 可见段的后续帧停止上传；任意一张非 Hero 帧都会重新武装下一次 Hero 请求。失败、超时和无有效 Result 不进入抑制态；连续 Hero 每6秒允许一次安全探测。原 `decision_cycle_id` 的两张非 Hero 结束规则只用于时延观测，不参与请求闸门。闸门只保存 generation 和时间状态，不增加帧队列容量，也不修改 ddbaby 服务端协议。
